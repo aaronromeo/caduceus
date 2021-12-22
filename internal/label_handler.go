@@ -17,6 +17,7 @@ func GetLabels() ([]*gmail.Label, error) {
 	srv, err := getService()
 	if err != nil {
 		log.Fatalf("Unable to retrieve Gmail client: %v", err)
+		return nil, err
 	}
 
 	user := "me"
@@ -45,6 +46,23 @@ func GetUserLabels() ([]*gmail.Label, error) {
 	return userLabels, err
 }
 
+func PatchUserLabel(id string, label *gmail.Label) (*gmail.Label, error) {
+	srv, err := getService()
+	if err != nil {
+		log.Fatalf("Unable to update Gmail client: %v", err)
+		return nil, err
+	}
+
+	user := "me"
+	r, err := srv.Users.Labels.Patch(user, id, label).Do()
+	if err != nil {
+		log.Fatalf("Unable to update label: %v", err)
+		return nil, err
+	}
+
+	return r, nil
+}
+
 func getService() (*gmail.Service, error) {
 	ctx := context.Background()
 	b, err := ioutil.ReadFile("credentials.json")
@@ -54,7 +72,7 @@ func getService() (*gmail.Service, error) {
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, gmail.GmailReadonlyScope)
+	config, err := google.ConfigFromJSON(b, gmail.GmailModifyScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 		return nil, err

@@ -38,3 +38,6 @@ The first time you run the sample, it prompts you to authorize access:
 ### Background
 The starting point for this code and run instructions is from the [Go quickstart](https://developers.google.com/gmail/api/quickstart/go)
 
+
+### Resources
+* [Google Cloud Platform](https://console.cloud.google.com/home/dashboard)

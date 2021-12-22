@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	internal "aaronromeo/mailboxorg/caduceus/internal"
+
+	"google.golang.org/api/gmail/v1"
 )
 
 func main() {
@@ -20,6 +24,77 @@ func main() {
 	}
 	fmt.Println("Labels:")
 	for _, l := range labels {
-		fmt.Printf("%s - %s (%s - %s) \n", l.Name, l.Type, l.LabelListVisibility, l.MessageListVisibility)
+		fmt.Printf("\"%s\",%s,%s,%s\n", l.Name, l.Id, l.LabelListVisibility, l.MessageListVisibility)
+	}
+	dumpLabels(labels)
+	ids := []string{
+		"Label_209",
+		"Label_232",
+		"Label_39",
+		"Label_36",
+		"Label_78",
+		"Label_37",
+		"Label_32",
+		"Label_200",
+		"Label_174",
+		"Label_34",
+		"Label_30",
+		"Label_33",
+		"Label_29",
+		"Label_98",
+		"Label_184",
+		"Label_22",
+		"Label_175",
+		"Label_173",
+		"Label_26",
+	}
+	hideLables(ids)
+}
+
+func dumpLabels(labels []*gmail.Label) {
+	f, err := os.OpenFile("labels.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		log.Fatalf("Unable to cache oauth token: %v", err)
+	}
+	defer f.Close()
+	f.WriteString("Name,Id,LabelListVisibility,MessageListVisibility\n")
+	for _, l := range labels {
+		_, err := f.WriteString(
+			fmt.Sprintf("\"%s\",%s,%s,%s\n", l.Name, l.Id, l.LabelListVisibility, l.MessageListVisibility),
+		)
+		if err != nil {
+			fmt.Println("Unable to write labels.")
+			panic(err)
+		}
+	}
+	f.Sync()
+}
+
+func hideLables(label_ids []string) {
+	fmt.Printf("Updating the labels\n\n")
+	for _, id := range label_ids {
+		tempLabel := gmail.Label{
+			Color: &gmail.LabelColor{BackgroundColor: "#000000", TextColor: "#ffffff"},
+			// Id:                    "",
+			LabelListVisibility: "labelHide",
+			// MessageListVisibility: "hide",
+			// MessagesTotal:         0,
+			// MessagesUnread:        0,
+			// Name:                  "",
+			// ThreadsTotal:          0,
+			// ThreadsUnread:         0,
+			// Type:                  "",
+			// ServerResponse:        googleapi.ServerResponse{},
+			// ForceSendFields:       []string{},
+			// NullFields:            []string{},
+		}
+
+		label, err := internal.PatchUserLabel(id, &tempLabel)
+		if err != nil {
+			fmt.Printf("Unable to update labels")
+			panic(err)
+		}
+
+		fmt.Printf("%s - %s (%s - %s) \n", label.Name, label.Id, label.LabelListVisibility, label.MessageListVisibility)
 	}
 }
