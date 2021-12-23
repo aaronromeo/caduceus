@@ -1,6 +1,6 @@
 # Caduceus
 
-A tool to help me manage my mailbox
+A tool to tame Gmail
 
 ## Getting started
 
