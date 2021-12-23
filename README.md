@@ -9,9 +9,8 @@ A tool to help me manage my mailbox
   * There is blurb about it [here](https://developers.google.com/workspace/guides/create-credentials#desktop-app)
 
 ### Required OAuth scope
-While testing I have the following scopes enabled
-* https://www.googleapis.com/auth/gmail.labels _(which I think is the needed one)_
-* XXX
+While testing I have the following scope enabled
+* https://www.googleapis.com/auth/gmail.modify _(which is full access to gmail)_
 
 ### Running the code
 #### Prepare the workspace
