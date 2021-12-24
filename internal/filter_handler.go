@@ -11,32 +11,32 @@ import (
 const filterdatafile string = "data/filters.json"
 
 type CadCriteria struct {
-	From           string
-	To             string
-	Subject        string
-	Query          string
-	NegatedQuery   string
-	HasAttachment  bool
-	ExcludeChats   bool
-	Size           int64
-	SizeComparison string
+	From           string `json:"from,omitempty"`
+	To             string `json:"to,omitempty"`
+	Subject        string `json:"subject,omitempty"`
+	Query          string `json:"query,omitempty"`
+	NegatedQuery   string `json:"negativeQuery,omitempty"`
+	HasAttachment  bool   `json:"hasAttachment,omitempty"`
+	ExcludeChats   bool   `json:"excludeChats,omitempty"`
+	Size           int64  `json:"size,omitempty"`
+	SizeComparison string `json:"sizeComparison,omitempty"`
 }
 
 type CadAction struct {
-	AddLabelIds    []string
-	RemoveLabelIds []string
-	Forward        string
+	AddLabelIds    []string `json:"addLabelIds,omitempty"`
+	RemoveLabelIds []string `json:"removeLabelIds,omitempty"`
+	Forward        string   `json:"forward,omitempty"`
 }
 
 type CadFilterMeta struct {
-	Labels []CadLabel
+	Labels []CadLabel `json:"labels,omitempty"`
 }
 
 type CadFilter struct {
-	Id       string
-	Criteria CadCriteria
-	Action   CadAction
-	Meta     CadFilterMeta
+	Id       string        `json:"id,omitempty"`
+	Criteria CadCriteria   `json:"criteria,omitempty"`
+	Action   CadAction     `json:"action,omitempty"`
+	Meta     CadFilterMeta `json:"meta,omitempty"`
 }
 
 func GetFilters() ([]*CadFilter, error) {

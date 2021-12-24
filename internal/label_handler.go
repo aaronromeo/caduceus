@@ -14,19 +14,19 @@ const user string = "user"
 const labeldatafile string = "data/labels.json"
 
 type CadLabelColor struct {
-	BackgroundColor string
-	TextColor       string
+	BackgroundColor string `json:"backgroundColor,omitempty"`
+	TextColor       string `json:"textColor,omitempty"`
 }
 
 type CadLabel struct {
-	Id                    string
-	Name                  string
-	LabelListVisibility   string
-	MessageListVisibility string
-	MessagesTotal         int64
-	MessagesUnread        int64
-	Type                  string
-	Color                 CadLabelColor
+	Id                    string        `json:"id,omitempty"`
+	Name                  string        `json:"name,omitempty"`
+	LabelListVisibility   string        `json:"labelListVisibility,omitempty"`
+	MessageListVisibility string        `json:"messageListVisibility,omitempty"`
+	MessagesTotal         int64         `json:"messagesTotal,omitempty"`
+	MessagesUnread        int64         `json:"messagesUnread,omitempty"`
+	Type                  string        `json:"type,omitempty"`
+	Color                 CadLabelColor `json:"color,omitempty"`
 }
 
 func GetLabels() ([]*CadLabel, error) {
