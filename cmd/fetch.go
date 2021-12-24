@@ -6,23 +6,55 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	internal "aaronromeo/mailboxorg/caduceus/internal"
 
 	"github.com/spf13/cobra"
 )
 
+const labelsArg string = "labels"
+const filtersArg string = "filters"
+
+var validArgs = []string{labelsArg, filtersArg, "all"}
+
 // fetchCmd represents the fetch command
 var fetchCmd = &cobra.Command{
-	Use:   "fetch",
+	Use:   fmt.Sprintf("fetch [%s]", strings.Join(validArgs, "|")),
 	Short: "Fetch Gmail resources",
 	Long: `Usage:
+fetch
+fetch all
 fetch labels
 fetch filters`,
+	ValidArgs: validArgs,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return nil
+		}
+
+		if contains(validArgs, args[0]) {
+			return nil
+		}
+
+		return fmt.Errorf("invalid args: %s", args[0])
+	},
 	Run: fetchLabelsAndFilters,
 }
 
 func fetchLabelsAndFilters(cmd *cobra.Command, args []string) {
+	switch args[0] {
+	case labelsArg:
+		fetchLabels()
+	case filtersArg:
+		fetchFilters()
+	default:
+		fetchLabels()
+		fetchFilters()
+	}
+}
+
+func fetchLabels() {
 	fmt.Println("Fetching labels...")
 	labels, err := internal.GetLabels()
 	if err != nil {
@@ -32,7 +64,9 @@ func fetchLabelsAndFilters(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+}
 
+func fetchFilters() {
 	fmt.Println("Fetching filters...")
 	filters, err := internal.GetFilters()
 	if err != nil {
@@ -44,8 +78,20 @@ func fetchLabelsAndFilters(cmd *cobra.Command, args []string) {
 	}
 }
 
+func contains(s []string, str string) bool {
+	for _, v := range validArgs {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 func init() {
 	rootCmd.AddCommand(fetchCmd)
+
+	// fetchCmd.Flags().StringVarP(&Resource, "resource", "r", "all", "Resources:labels,filters,all")
 
 	// Here you will define your flags and configuration settings.
 
