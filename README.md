@@ -24,7 +24,24 @@ While testing I have the following scope enabled
 #### Run the code
 Build and run the sample using the following command from your working directory:
   ```bash
-  go run main.go fetch
+  $ go run main.go
+
+  A tool to help manage Gmail labels, filters and messages.
+
+  Usage:
+    caduceus [command]
+
+  Available Commands:
+    completion  Generate the autocompletion script for the specified shell
+    fetch       Fetch Gmail resources
+    help        Help about any command
+
+  Flags:
+    -h, --help     help for caduceus
+    -t, --toggle   Help message for toggle
+
+  Use "caduceus [command] --help" for more information about a command.
+
   ```
 
 The first time you run the sample, it prompts you to authorize access:
