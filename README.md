@@ -5,7 +5,7 @@ A tool to tame Gmail
 ## Getting started
 
 ### Required files
-* credentials.json
+* data/credentials.json
   * There is blurb about it [here](https://developers.google.com/workspace/guides/create-credentials#desktop-app)
 
 ### Required OAuth scope
@@ -24,7 +24,7 @@ While testing I have the following scope enabled
 #### Run the code
 Build and run the sample using the following command from your working directory:
   ```bash
-  go run quickstart.go
+  go run main.go fetch
   ```
 
 The first time you run the sample, it prompts you to authorize access:

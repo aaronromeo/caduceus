@@ -12,7 +12,7 @@ import (
 
 func GetService() (*gmail.Service, error) {
 	ctx := context.Background()
-	b, err := ioutil.ReadFile("credentials.json")
+	b, err := ioutil.ReadFile("data/credentials.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 		return nil, err
