@@ -86,6 +86,28 @@ func MarshalCadFilter(filter *gmail.Filter) *CadFilter {
 }
 
 func SaveLocalFilters(filters []*CadFilter) error {
+	localLabels, err := ReadLocalLabels()
+	if err != nil {
+		log.Fatalf("Unable to read local labels: %v", err)
+		return err
+	}
+
+	labelmap := make(map[string]CadLabel)
+	for _, label := range localLabels {
+		labelmap[label.Id] = label
+	}
+
+	for i, filter := range filters {
+		meta := CadFilterMeta{}
+		for _, labelId := range filter.Action.AddLabelIds {
+			meta.Labels = append(meta.Labels, labelmap[labelId])
+		}
+		for _, labelId := range filter.Action.RemoveLabelIds {
+			meta.Labels = append(meta.Labels, labelmap[labelId])
+		}
+		filters[i].Meta = meta
+	}
+
 	b, err := json.MarshalIndent(filters, "", "  ")
 	if err != nil {
 		log.Fatalf("Unable to marshal filters: %v", err)

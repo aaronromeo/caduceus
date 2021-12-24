@@ -11,7 +11,7 @@ import (
 )
 
 const user string = "user"
-const userlabeldatafile string = "data/userlabels.json"
+const labeldatafile string = "data/labels.json"
 
 type CadLabelColor struct {
 	BackgroundColor string
@@ -48,7 +48,13 @@ func GetLabels() ([]*CadLabel, error) {
 	})
 	cadlabels := []*CadLabel{}
 	for _, label := range labels {
-		cadlabels = append(cadlabels, MarshalCadLabel(label))
+		r, err := srv.Users.Labels.Get(user, label.Id).Do()
+		if err != nil {
+			log.Fatalf("Unable to retrieve labels: %v", err)
+			return nil, err
+		}
+
+		cadlabels = append(cadlabels, MarshalCadLabel(r))
 	}
 	return cadlabels, nil
 }
@@ -137,7 +143,7 @@ func SaveLocalLabels(labels []*CadLabel) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(userlabeldatafile, b, 0664)
+	err = ioutil.WriteFile(labeldatafile, b, 0664)
 	if err != nil {
 		log.Fatalf("Unable to persist labels: %v", err)
 		return err
@@ -146,11 +152,11 @@ func SaveLocalLabels(labels []*CadLabel) error {
 }
 
 func ReadLocalLabels() ([]CadLabel, error) {
-	if !fileExists(userlabeldatafile) {
+	if !fileExists(labeldatafile) {
 		return []CadLabel{}, nil
 	}
 
-	b, err := ioutil.ReadFile(userlabeldatafile)
+	b, err := ioutil.ReadFile(labeldatafile)
 	if err != nil {
 		log.Fatalf("Unable to read local label data file: %v", err)
 		return nil, err

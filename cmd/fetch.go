@@ -24,7 +24,7 @@ fetch filters`,
 
 func fetchLabelsAndFilters(cmd *cobra.Command, args []string) {
 	fmt.Println("Fetching labels...")
-	labels, err := internal.GetUserLabels()
+	labels, err := internal.GetLabels()
 	if err != nil {
 		panic(err)
 	}
