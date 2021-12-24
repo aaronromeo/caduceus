@@ -43,6 +43,9 @@ fetch filters`,
 }
 
 func fetchLabelsAndFilters(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		args = []string{"all"}
+	}
 	switch args[0] {
 	case labelsArg:
 		fetchLabels()
