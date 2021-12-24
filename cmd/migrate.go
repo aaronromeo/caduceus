@@ -6,7 +6,6 @@ package cmd
 
 import (
 	internal "aaronromeo/mailboxorg/caduceus/internal"
-	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -25,18 +24,7 @@ to quickly create a Cobra application.`,
 }
 
 func runMigrations(cmd *cobra.Command, args []string) {
-	fmt.Println("Fetching messages...")
-	labels := []*internal.CadLabel{{
-		Id: "Label_175",
-	}, {
-		Id: "UNREAD",
-	},
-	}
-	messageIDs, err := internal.GetMessagesIDsByLableIDs(labels)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(len(messageIDs), messageIDs)
+	internal.RunMigrations()
 }
 
 func init() {

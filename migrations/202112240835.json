@@ -1,0 +1,40 @@
+[
+    {
+        "resource": "messages",
+        "action": {
+            "queryLabelIds": ["Label_7200267466288536498"],
+            "removeLabelIds": ["Label_7200267466288536498"],
+            "addLabelIds": ["Label_239"]
+        }
+    },
+    {
+        "resource": "messages",
+        "action": {
+            "queryLabelIds": ["Label_227"],
+            "removeLabelIds": ["Label_227", "UNREAD"],
+            "addLabelIds": ["Label_231"]
+        }
+    },
+    {
+        "resource": "messages",
+        "action": {
+            "queryLabelIds": ["Label_222"],
+            "removeLabelIds": ["Label_222", "UNREAD"],
+            "addLabelIds": ["Label_3152417086712246767"]
+        }
+    },
+    {
+        "resource": "filters",
+        "action": {
+            "id": "ANe1Bmis3LgHlXebs4TgF-gZDqIrl4kneClFkCQCgzB5y6GMdyuxTfyfqMtbGG-iKOhEPGNf5Q",
+            "updateAddLabelIds": ["Label_3152417086712246767"]
+        }
+    },
+    {
+        "resource": "filters",
+        "action": {
+            "id": "ANe1BmigkfsCXjR7-Xpn_IWccDiTqEKYuQzTUyc-LYPXG9Ornatts0BUE-zDCGRsce_PcElG7w",
+            "updateAddLabelIds": ["Label_3152417086712246767"]
+        }
+    }
+]
