@@ -33,10 +33,10 @@ type CadFilterMeta struct {
 }
 
 type CadFilter struct {
-	Id       string        `json:"id,omitempty"`
-	Criteria CadCriteria   `json:"criteria,omitempty"`
-	Action   CadAction     `json:"action,omitempty"`
-	Meta     CadFilterMeta `json:"meta,omitempty"`
+	Id       string         `json:"id,omitempty"`
+	Criteria *CadCriteria   `json:"criteria,omitempty"`
+	Action   *CadAction     `json:"action,omitempty"`
+	Meta     *CadFilterMeta `json:"meta,omitempty"`
 }
 
 func GetFilters() ([]*CadFilter, error) {
@@ -59,6 +59,55 @@ func GetFilters() ([]*CadFilter, error) {
 	return filters, nil
 }
 
+func GetFilter(cadFilter *CadFilter) (*CadFilter, error) {
+	srv, err := GetService()
+	if err != nil {
+		log.Printf("Unable to retrieve Gmail client: %v", err)
+		return nil, err
+	}
+
+	user := "me"
+	filter, err := srv.Users.Settings.Filters.Get(user, cadFilter.Id).Do()
+	if err != nil {
+		log.Printf("Unable to retrieve filter: %s\n%v", cadFilter.Id, err)
+		return nil, err
+	}
+	return MarshalCadFilter(filter), nil
+}
+
+func CreateFilter(cadFilter *CadFilter) (*CadFilter, error) {
+	srv, err := GetService()
+	if err != nil {
+		log.Printf("Unable to retrieve Gmail client: %v", err)
+		return nil, err
+	}
+
+	user := "me"
+	gmailFilter := cadFilter.MarshalGmail()
+	filter, err := srv.Users.Settings.Filters.Create(user, gmailFilter).Do()
+	if err != nil {
+		log.Printf("Unable to create filter: %v", err)
+		return nil, err
+	}
+	return MarshalCadFilter(filter), nil
+}
+
+func DeleteFilter(cadFilter *CadFilter) error {
+	srv, err := GetService()
+	if err != nil {
+		log.Printf("Unable to retrieve Gmail client: %v", err)
+		return err
+	}
+
+	user := "me"
+	err = srv.Users.Settings.Filters.Delete(user, cadFilter.Id).Do()
+	if err != nil {
+		log.Printf("Unable to delete filter: %s\n%v", cadFilter.Id, err)
+		return err
+	}
+	return nil
+}
+
 func MarshalCadFilter(filter *gmail.Filter) *CadFilter {
 	critera := &CadCriteria{
 		From:           filter.Criteria.From,
@@ -78,8 +127,36 @@ func MarshalCadFilter(filter *gmail.Filter) *CadFilter {
 	}
 	data := &CadFilter{
 		Id:       filter.Id,
-		Criteria: *critera,
-		Action:   *action,
+		Criteria: critera,
+		Action:   action,
+	}
+
+	return data
+}
+
+func (filter *CadFilter) MarshalGmail() *gmail.Filter {
+	data := &gmail.Filter{Id: filter.Id}
+
+	if filter.Action != nil {
+		data.Action = &gmail.FilterAction{
+			AddLabelIds:    filter.Action.AddLabelIds,
+			RemoveLabelIds: filter.Action.RemoveLabelIds,
+			Forward:        filter.Action.Forward,
+		}
+	}
+
+	if filter.Criteria != nil {
+		data.Criteria = &gmail.FilterCriteria{
+			To:             filter.Criteria.To,
+			From:           filter.Criteria.From,
+			Subject:        filter.Criteria.Subject,
+			Query:          filter.Criteria.Query,
+			ExcludeChats:   filter.Criteria.ExcludeChats,
+			HasAttachment:  filter.Criteria.HasAttachment,
+			NegatedQuery:   filter.Criteria.NegatedQuery,
+			Size:           filter.Criteria.Size,
+			SizeComparison: filter.Criteria.SizeComparison,
+		}
 	}
 
 	return data
@@ -98,7 +175,7 @@ func SaveLocalFilters(filters []*CadFilter) error {
 	}
 
 	for i, filter := range filters {
-		meta := CadFilterMeta{}
+		meta := &CadFilterMeta{}
 		for _, labelId := range filter.Action.AddLabelIds {
 			meta.Labels = append(meta.Labels, labelmap[labelId])
 		}

@@ -12,31 +12,25 @@ import (
 	"strings"
 )
 
-type CadMessagesMigrationAction struct {
-	QueryLabelIds  []string `json:"queryLabelIds"`
-	RemoveLabelIds []string `json:"removeLabelIds"`
-	AddLabelIds    []string `json:"addLabelIds"`
+type CadUpdateMessagesMigration struct {
+	QueryLabelIds  *[]string `json:"queryLabelIds"`
+	RemoveLabelIds *[]string `json:"removeLabelIds"`
+	AddLabelIds    *[]string `json:"addLabelIds"`
 }
 
-type CadMessagesMigration struct {
-	Resource string                     `json:"resource"`
-	Action   CadMessagesMigrationAction `json:"action"`
+type CadCreateFilterMigration struct {
+	Criteria *CadCriteria `json:"criteria,omitempty"`
+	Action   *CadAction   `json:"action,omitempty"`
 }
 
-type CadFiltersMigrationAction struct {
-	Id                string   `json:"id"`
-	UpdateAddLabelIds []string `json:"updateAddLabelIds"`
-}
-
-type CadFiltersMigration struct {
-	Resource string                    `json:"resource"`
-	Action   CadFiltersMigrationAction `json:"action"`
+type CadDeleteFilterMigration struct {
+	Id *string `json:"id"`
 }
 
 type CadRawMigration struct {
-	Resource  string          `json:"resource"`
-	Action    interface{}     `json:"-"`
-	RawAction json.RawMessage `json:"action"`
+	Operation  *string         `json:"operation"`
+	Details    interface{}     `json:"-"`
+	RawDetails json.RawMessage `json:"details"`
 }
 
 const migrationsPath string = "migrations"
@@ -48,8 +42,9 @@ func RunMigrations() error {
 		return err
 	}
 
-	var migrations []CadRawMigration
 	for _, migrationFile := range migrationFiles {
+		var migrations []CadRawMigration
+
 		b, err := ioutil.ReadFile(migrationFile)
 		if err != nil {
 			log.Printf("Unable to read the migration file: %v", err)
@@ -58,37 +53,46 @@ func RunMigrations() error {
 		if err := json.Unmarshal(b, &migrations); err != nil {
 			return err
 		}
-	}
 
-	for _, migration := range migrations {
-		switch migration.Resource {
-		case "messages":
-			messageMigration := CadMessagesMigration{}
-			b, _ := migration.MarshalJSON()
-			json.Unmarshal(b, &messageMigration)
-			fmt.Println(
-				"messageMigration",
-				messageMigration.Resource,
-				messageMigration.Action.QueryLabelIds,
-				messageMigration.Action.AddLabelIds,
-				messageMigration.Action.RemoveLabelIds,
-			)
-			err := migrateMessage(messageMigration)
-			if err != nil {
-				return err
+		for _, migration := range migrations {
+			switch *migration.Operation {
+			case "update-messages":
+				messageMigration := CadUpdateMessagesMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &messageMigration)
+				err := updateMessages(messageMigration)
+				if err != nil {
+					return err
+				}
+			case "create-filter":
+				filterMigration := CadCreateFilterMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &filterMigration)
+				err := createFilter(filterMigration)
+				if err != nil {
+					return err
+				}
+			case "delete-filter":
+				filterMigration := CadDeleteFilterMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &filterMigration)
+				err := deleteFilter(filterMigration)
+				if err != nil {
+					return err
+				}
+			default:
+				return errors.New("Unknown operation " + *migration.Operation)
 			}
-		case "filters":
-			filterMigration := CadFiltersMigration{}
-			b, _ := migration.MarshalJSON()
-			json.Unmarshal(b, &filterMigration)
-			fmt.Println(
-				"filterMigration",
-				filterMigration.Resource,
-				filterMigration.Action.Id,
-				filterMigration.Action.UpdateAddLabelIds,
-			)
-		default:
-			return errors.New("Unknown resource " + migration.Resource)
+		}
+
+		err = os.Rename(
+			migrationFile,
+			strings.ReplaceAll(
+				strings.ToLower(migrationFile), ".json", "-complete.json",
+			),
+		)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -110,13 +114,13 @@ func (m *CadRawMigration) UnmarshalJSON(b []byte) error {
 func (m *CadRawMigration) MarshalJSON() ([]byte, error) {
 	type cadRawMigration CadRawMigration
 
-	if m.Action != nil {
-		b, err := json.Marshal(m.Action)
+	if m.Details != nil {
+		b, err := json.Marshal(m.Details)
 
 		if err != nil {
 			return nil, err
 		}
-		m.RawAction = b
+		m.RawDetails = b
 	}
 	return json.Marshal((*cadRawMigration)(m))
 }
@@ -135,6 +139,10 @@ func getMigrationFiles() ([]string, error) {
 			migrationFiles = append(migrationFiles, strings.Join([]string{migrationsPath, file.Name()}, "/"))
 		}
 	}
+	if len(migrationFiles) == 0 {
+		log.Printf("No files to migrate")
+		return nil, errors.New("No migrations files")
+	}
 	sort.SliceStable(migrationFiles, func(i, j int) bool {
 		return migrationFiles[i] < migrationFiles[j]
 	})
@@ -142,11 +150,11 @@ func getMigrationFiles() ([]string, error) {
 	return migrationFiles, nil
 }
 
-func migrateMessage(migration CadMessagesMigration) error {
-	fmt.Println("Fetching messages...")
+func updateMessages(migration CadUpdateMessagesMigration) error {
+	fmt.Println("Migrating messages...", migration.QueryLabelIds)
 
 	labels := []*CadLabel{}
-	for _, labelId := range migration.Action.QueryLabelIds {
+	for _, labelId := range *migration.QueryLabelIds {
 		labels = append(labels, &CadLabel{Id: labelId})
 	}
 	messageIDs, err := GetMessagesIDsByLableIDs(labels)
@@ -154,6 +162,39 @@ func migrateMessage(migration CadMessagesMigration) error {
 		return err
 	}
 	fmt.Println(len(messageIDs), messageIDs)
+
+	return nil
+}
+
+func createFilter(migration CadCreateFilterMigration) error {
+	fmt.Println("Creating filter...", migration.Criteria.From, migration.Criteria.To, migration.Criteria.Subject)
+
+	newCadFilter := &CadFilter{Action: migration.Action, Criteria: migration.Criteria}
+
+	_, err := CreateFilter(newCadFilter)
+	if err != nil {
+		log.Printf("Unable to create new filter")
+		return err
+	}
+
+	return nil
+}
+
+func deleteFilter(migration CadDeleteFilterMigration) error {
+	fmt.Println("Deleting filter...", *migration.Id)
+
+	oldCadFilter := &CadFilter{Id: *migration.Id}
+	oldCadFilter, err := GetFilter(oldCadFilter)
+	if err != nil {
+		log.Printf("Unable to find referenced filter %v", *migration.Id)
+		return err
+	}
+
+	err = DeleteFilter(oldCadFilter)
+	if err != nil {
+		log.Printf("Unable to delete filter %v", *migration.Id)
+		return err
+	}
 
 	return nil
 }

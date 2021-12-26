@@ -79,7 +79,7 @@ func PatchUserLabel(id string, cadlabel *CadLabel) (*gmail.Label, error) {
 		return nil, err
 	}
 
-	label := MarshalGmailLabel(cadlabel)
+	label := cadlabel.MarshalGmail()
 	user := "me"
 	r, err := srv.Users.Labels.Patch(user, id, label).Do()
 	if err != nil {
@@ -112,7 +112,7 @@ func MarshalCadLabel(label *gmail.Label) *CadLabel {
 	return data
 }
 
-func MarshalGmailLabel(label *CadLabel) *gmail.Label {
+func (label *CadLabel) MarshalGmail() *gmail.Label {
 	data := &gmail.Label{}
 	if label.Id != "" {
 		data.Id = label.Id
