@@ -4,12 +4,35 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/gmail/v1"
+	"google.golang.org/api/option"
 )
+
+func GetService() (*gmail.Service, error) {
+	ctx := context.Background()
+	b, err := ioutil.ReadFile("data/credentials.json")
+	if err != nil {
+		log.Printf("Unable to read client secret file: %v", err)
+		return nil, err
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(b, gmail.GmailModifyScope, gmail.GmailSettingsBasicScope)
+	if err != nil {
+		log.Printf("Unable to parse client secret file to config: %v", err)
+		return nil, err
+	}
+	client := GetClient(config)
+
+	return gmail.NewService(ctx, option.WithHTTPClient(client))
+}
 
 // Retrieve a token, saves the token, then returns the generated client.
 func GetClient(config *oauth2.Config) *http.Client {
