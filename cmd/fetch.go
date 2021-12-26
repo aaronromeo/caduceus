@@ -48,16 +48,16 @@ func fetchLabelsAndFilters(cmd *cobra.Command, args []string) {
 	}
 	switch args[0] {
 	case labelsArg:
-		fetchLabels()
+		FetchLabels()
 	case filtersArg:
-		fetchFilters()
+		FetchFilters()
 	default:
-		fetchLabels()
-		fetchFilters()
+		FetchLabels()
+		FetchFilters()
 	}
 }
 
-func fetchLabels() {
+func FetchLabels() {
 	fmt.Println("Fetching labels...")
 	labels, err := internal.GetLabels()
 	if err != nil {
@@ -69,7 +69,7 @@ func fetchLabels() {
 	}
 }
 
-func fetchFilters() {
+func FetchFilters() {
 	fmt.Println("Fetching filters...")
 	filters, err := internal.GetFilters()
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 func GetMessagesIDsByLableIDs(labels []*CadLabel) ([]string, error) {
 	srv, err := GetService()
 	if err != nil {
-		log.Fatalf("Unable to retrieve Gmail client: %v", err)
+		log.Printf("Unable to retrieve Gmail client: %v", err)
 		return nil, err
 	}
 
@@ -27,7 +27,7 @@ func GetMessagesIDsByLableIDs(labels []*CadLabel) ([]string, error) {
 			LabelIds(labelIds...).
 			Do()
 		if err != nil {
-			log.Fatalf("Unable to retrieve messages: %v", err)
+			log.Printf("Unable to retrieve messages: %v", err)
 			return nil, err
 		}
 		for _, message := range r.Messages {

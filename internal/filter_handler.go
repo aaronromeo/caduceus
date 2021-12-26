@@ -42,14 +42,14 @@ type CadFilter struct {
 func GetFilters() ([]*CadFilter, error) {
 	srv, err := GetService()
 	if err != nil {
-		log.Fatalf("Unable to retrieve Gmail client: %v", err)
+		log.Printf("Unable to retrieve Gmail client: %v", err)
 		return nil, err
 	}
 
 	user := "me"
 	r, err := srv.Users.Settings.Filters.List(user).Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve filters: %v", err)
+		log.Printf("Unable to retrieve filters: %v", err)
 		return nil, err
 	}
 	filters := []*CadFilter{}
@@ -88,7 +88,7 @@ func MarshalCadFilter(filter *gmail.Filter) *CadFilter {
 func SaveLocalFilters(filters []*CadFilter) error {
 	localLabels, err := ReadLocalLabels()
 	if err != nil {
-		log.Fatalf("Unable to read local labels: %v", err)
+		log.Printf("Unable to read local labels: %v", err)
 		return err
 	}
 
@@ -110,13 +110,13 @@ func SaveLocalFilters(filters []*CadFilter) error {
 
 	b, err := json.MarshalIndent(filters, "", "  ")
 	if err != nil {
-		log.Fatalf("Unable to marshal filters: %v", err)
+		log.Printf("Unable to marshal filters: %v", err)
 		return err
 	}
 
 	err = ioutil.WriteFile(filterdatafile, b, 0664)
 	if err != nil {
-		log.Fatalf("Unable to persist filters: %v", err)
+		log.Printf("Unable to persist filters: %v", err)
 		return err
 	}
 	return nil

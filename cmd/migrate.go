@@ -24,7 +24,15 @@ to quickly create a Cobra application.`,
 }
 
 func runMigrations(cmd *cobra.Command, args []string) {
-	internal.RunMigrations()
+	defer func() {
+		FetchLabels()
+		FetchFilters()
+	}()
+
+	err := internal.RunMigrations()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func init() {

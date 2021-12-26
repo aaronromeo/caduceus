@@ -44,7 +44,7 @@ const migrationsPath string = "migrations"
 func RunMigrations() error {
 	migrationFiles, err := getMigrationFiles()
 	if err != nil {
-		log.Fatalf("Unable to fetch migration files: %v", err)
+		log.Printf("Unable to fetch migration files: %v", err)
 		return err
 	}
 
@@ -52,7 +52,7 @@ func RunMigrations() error {
 	for _, migrationFile := range migrationFiles {
 		b, err := ioutil.ReadFile(migrationFile)
 		if err != nil {
-			log.Fatalf("Unable to read the migration file: %v", err)
+			log.Printf("Unable to read the migration file: %v", err)
 			return err
 		}
 		if err := json.Unmarshal(b, &migrations); err != nil {
@@ -100,7 +100,7 @@ func (m *CadRawMigration) UnmarshalJSON(b []byte) error {
 
 	err := json.Unmarshal(b, (*cadRawMigration)(m))
 	if err != nil {
-		log.Fatalf("Unable to marshal data: %v", err)
+		log.Printf("Unable to marshal data: %v", err)
 		return err
 	}
 
@@ -124,7 +124,7 @@ func (m *CadRawMigration) MarshalJSON() ([]byte, error) {
 func getMigrationFiles() ([]string, error) {
 	files, err := os.ReadDir(migrationsPath)
 	if err != nil {
-		log.Fatalf("Unable to read the migrations directory: %v", err)
+		log.Printf("Unable to read the migrations directory: %v", err)
 		return nil, err
 	}
 

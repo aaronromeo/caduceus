@@ -32,14 +32,14 @@ type CadLabel struct {
 func GetLabels() ([]*CadLabel, error) {
 	srv, err := GetService()
 	if err != nil {
-		log.Fatalf("Unable to retrieve Gmail client: %v", err)
+		log.Printf("Unable to retrieve Gmail client: %v", err)
 		return nil, err
 	}
 
 	user := "me"
 	r, err := srv.Users.Labels.List(user).Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve labels: %v", err)
+		log.Printf("Unable to retrieve labels: %v", err)
 		return nil, err
 	}
 	labels := r.Labels
@@ -50,7 +50,7 @@ func GetLabels() ([]*CadLabel, error) {
 	for _, label := range labels {
 		r, err := srv.Users.Labels.Get(user, label.Id).Do()
 		if err != nil {
-			log.Fatalf("Unable to retrieve labels: %v", err)
+			log.Printf("Unable to retrieve labels: %v", err)
 			return nil, err
 		}
 
@@ -75,7 +75,7 @@ func GetUserLabels() ([]*CadLabel, error) {
 func PatchUserLabel(id string, cadlabel *CadLabel) (*gmail.Label, error) {
 	srv, err := GetService()
 	if err != nil {
-		log.Fatalf("Unable to update Gmail client: %v", err)
+		log.Printf("Unable to update Gmail client: %v", err)
 		return nil, err
 	}
 
@@ -83,7 +83,7 @@ func PatchUserLabel(id string, cadlabel *CadLabel) (*gmail.Label, error) {
 	user := "me"
 	r, err := srv.Users.Labels.Patch(user, id, label).Do()
 	if err != nil {
-		log.Fatalf("Unable to update label: %v", err)
+		log.Printf("Unable to update label: %v", err)
 		return nil, err
 	}
 
@@ -139,13 +139,13 @@ func MarshalGmailLabel(label *CadLabel) *gmail.Label {
 func SaveLocalLabels(labels []*CadLabel) error {
 	b, err := json.MarshalIndent(labels, "", "  ")
 	if err != nil {
-		log.Fatalf("Unable to marshal labels to JSON: %v", err)
+		log.Printf("Unable to marshal labels to JSON: %v", err)
 		return err
 	}
 
 	err = ioutil.WriteFile(labeldatafile, b, 0664)
 	if err != nil {
-		log.Fatalf("Unable to persist labels: %v", err)
+		log.Printf("Unable to persist labels: %v", err)
 		return err
 	}
 	return nil
@@ -158,7 +158,7 @@ func ReadLocalLabels() ([]CadLabel, error) {
 
 	b, err := ioutil.ReadFile(labeldatafile)
 	if err != nil {
-		log.Fatalf("Unable to read local label data file: %v", err)
+		log.Printf("Unable to read local label data file: %v", err)
 		return nil, err
 	}
 	var labels []CadLabel
