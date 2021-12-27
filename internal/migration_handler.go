@@ -141,7 +141,7 @@ func getMigrationFiles() ([]string, error) {
 	}
 	if len(migrationFiles) == 0 {
 		log.Printf("No files to migrate")
-		return nil, errors.New("No migrations files")
+		return nil, errors.New("no migrations files")
 	}
 	sort.SliceStable(migrationFiles, func(i, j int) bool {
 		return migrationFiles[i] < migrationFiles[j]
