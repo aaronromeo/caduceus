@@ -72,14 +72,47 @@ func GetUserLabels() ([]*CadLabel, error) {
 	return userLabels, err
 }
 
-func PatchUserLabel(id string, cadlabel *CadLabel) (*gmail.Label, error) {
+func CreateUserLabel(cadLabel *CadLabel) (*CadLabel, error) {
+	srv, err := GetService()
+	if err != nil {
+		log.Printf("Unable to retrieve Gmail client: %v", err)
+		return nil, err
+	}
+
+	user := "me"
+	gmailLabel := cadLabel.MarshalGmail()
+	label, err := srv.Users.Labels.Create(user, gmailLabel).Do()
+	if err != nil {
+		log.Printf("Unable to create label: %v", err)
+		return nil, err
+	}
+	return MarshalCadLabel(label), nil
+}
+
+func DeleteUserLabel(cadLabel *CadLabel) error {
+	srv, err := GetService()
+	if err != nil {
+		log.Printf("Unable to retrieve Gmail client: %v", err)
+		return err
+	}
+
+	user := "me"
+	err = srv.Users.Labels.Delete(user, cadLabel.Id).Do()
+	if err != nil {
+		log.Printf("Unable to delete label: %s\n%v", cadLabel.Id, err)
+		return err
+	}
+	return nil
+}
+
+func PatchUserLabel(id string, updatedCadlabel *CadLabel) (*gmail.Label, error) {
 	srv, err := GetService()
 	if err != nil {
 		log.Printf("Unable to update Gmail client: %v", err)
 		return nil, err
 	}
 
-	label := cadlabel.MarshalGmail()
+	label := updatedCadlabel.MarshalGmail()
 	user := "me"
 	r, err := srv.Users.Labels.Patch(user, id, label).Do()
 	if err != nil {
