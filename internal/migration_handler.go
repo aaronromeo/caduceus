@@ -157,11 +157,21 @@ func updateMessages(migration CadUpdateMessagesMigration) error {
 	for _, labelId := range *migration.QueryLabelIds {
 		labels = append(labels, &CadLabel{Id: labelId})
 	}
-	messageIDs, err := GetMessagesIDsByLableIDs(labels)
+	messageIds, err := GetMessagesIDsByLabelIDs(labels)
 	if err != nil {
+		log.Printf("Unable to retrieve message Ids: %v", err)
 		return err
 	}
-	fmt.Println(len(messageIDs), messageIDs)
+
+	err = BulkUpdateMessageLabels(
+		messageIds,
+		*migration.AddLabelIds,
+		*migration.RemoveLabelIds,
+	)
+	if err != nil {
+		log.Printf("Unable to modify messages: %v", err)
+		return err
+	}
 
 	return nil
 }

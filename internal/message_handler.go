@@ -2,9 +2,13 @@ package internal
 
 import (
 	"log"
+
+	"google.golang.org/api/gmail/v1"
 )
 
-func GetMessagesIDsByLableIDs(labels []*CadLabel) ([]string, error) {
+const bulkLimit int = 1000
+
+func GetMessagesIDsByLabelIDs(labels []*CadLabel) ([]string, error) {
 	srv, err := GetService()
 	if err != nil {
 		log.Printf("Unable to retrieve Gmail client: %v", err)
@@ -41,4 +45,33 @@ func GetMessagesIDsByLableIDs(labels []*CadLabel) ([]string, error) {
 		}
 	}
 	return returnIDs, nil
+}
+
+func BulkUpdateMessageLabels(messageIds []string, addLabelIds []string, removeLabelIds []string) error {
+	srv, err := GetService()
+	if err != nil {
+		log.Printf("Unable to retrieve Gmail client: %v", err)
+		return err
+	}
+
+	for i := 0; i < len(messageIds); i += bulkLimit {
+		batchIds := messageIds[i:min(i+bulkLimit, len(messageIds))]
+		user := "me"
+
+		req := &gmail.BatchModifyMessagesRequest{Ids: batchIds, AddLabelIds: addLabelIds, RemoveLabelIds: removeLabelIds}
+
+		if err = srv.Users.Messages.BatchModify(user, req).Do(); err != nil {
+			log.Printf("Unable to modify messages: %v", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func min(a int, b int) int {
+	if a <= b {
+		return a
+	}
+	return b
 }
