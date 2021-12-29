@@ -50,5 +50,26 @@
                 ]
             }
         }
+    },
+    {
+        "operation": "create-label",
+        "details":{
+            "name": "+02-News",
+            "labelListVisibility": "labelShowIfUnread",
+            "messageListVisibility": "show"
+        }
+    },
+    {
+        "operation": "delete-label",
+        "details":{
+            "id": "Label_72"
+        }
+    },
+    {
+        "operation": "update-label",
+        "details":{
+            "id": "Label_73",
+            "name": "***Delete"
+        }
     }
 ]

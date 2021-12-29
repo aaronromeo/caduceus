@@ -27,6 +27,25 @@ type CadDeleteFilterMigration struct {
 	Id *string `json:"id"`
 }
 
+type CadUpdateLabelMigration struct {
+	Id                    *string        `json:"id"`
+	Name                  *string        `json:"name,omitempty"`
+	LabelListVisibility   *string        `json:"labelListVisibility,omitempty"`
+	MessageListVisibility *string        `json:"messageListVisibility,omitempty"`
+	Color                 *CadLabelColor `json:"color,omitempty"`
+}
+
+type CadCreateLabelMigration struct {
+	Name                  *string        `json:"name,omitempty"`
+	LabelListVisibility   *string        `json:"labelListVisibility,omitempty"`
+	MessageListVisibility *string        `json:"messageListVisibility,omitempty"`
+	Color                 *CadLabelColor `json:"color,omitempty"`
+}
+
+type CadDeleteLabelMigration struct {
+	Id *string `json:"id"`
+}
+
 type CadRawMigration struct {
 	Operation  *string         `json:"operation"`
 	Details    interface{}     `json:"-"`
@@ -80,8 +99,32 @@ func RunMigrations() error {
 				if err != nil {
 					return err
 				}
+			case "update-label":
+				labelMigration := CadUpdateLabelMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &labelMigration)
+				err := updateLabel(labelMigration)
+				if err != nil {
+					return err
+				}
+			case "create-label":
+				labelMigration := CadCreateLabelMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &labelMigration)
+				err := createLabel(labelMigration)
+				if err != nil {
+					return err
+				}
+			case "delete-label":
+				labelMigration := CadDeleteLabelMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &labelMigration)
+				err := deleteLabel(labelMigration)
+				if err != nil {
+					return err
+				}
 			default:
-				return errors.New("Unknown operation " + *migration.Operation)
+				return errors.New("unknown operation " + *migration.Operation)
 			}
 		}
 
@@ -194,15 +237,84 @@ func deleteFilter(migration CadDeleteFilterMigration) error {
 	fmt.Println("Deleting filter...", *migration.Id)
 
 	oldCadFilter := &CadFilter{Id: *migration.Id}
-	oldCadFilter, err := GetFilter(oldCadFilter)
+	err := DeleteFilter(oldCadFilter)
 	if err != nil {
-		log.Printf("Unable to find referenced filter %v", *migration.Id)
+		log.Printf("Unable to delete filter %v", *migration.Id)
 		return err
 	}
 
-	err = DeleteFilter(oldCadFilter)
+	return nil
+}
+
+func createLabel(migration CadCreateLabelMigration) error {
+	fmt.Println("Creating label...", *migration.Name)
+
+	newCadLabel := &CadLabel{}
+	if migration.Name != nil {
+		newCadLabel.Name = *migration.Name
+	}
+	if migration.LabelListVisibility != nil {
+		newCadLabel.LabelListVisibility = *migration.LabelListVisibility
+	}
+	if migration.MessageListVisibility != nil {
+		newCadLabel.MessageListVisibility = *migration.MessageListVisibility
+	}
+	if migration.Color != nil {
+		newCadLabel.Color = *migration.Color
+	}
+
+	_, err := CreateUserLabel(newCadLabel)
 	if err != nil {
-		log.Printf("Unable to delete filter %v", *migration.Id)
+		log.Printf("Unable to create new filter")
+		return err
+	}
+
+	return nil
+}
+
+func deleteLabel(migration CadDeleteLabelMigration) error {
+	fmt.Println("Deleting label...", *migration.Id)
+
+	if migration.Id == nil {
+		log.Printf("Label Id cannot be nil")
+		return errors.New("delete Label called with missing label id")
+	}
+
+	oldCadLabel := &CadLabel{Id: *migration.Id}
+	err := DeleteUserLabel(oldCadLabel)
+	if err != nil {
+		log.Printf("Unable to delete label %v", *migration.Id)
+		return err
+	}
+
+	return nil
+}
+
+func updateLabel(migration CadUpdateLabelMigration) error {
+	fmt.Println("Update label...", *migration.Id)
+
+	if migration.Id == nil {
+		log.Printf("Label Id cannot be nil")
+		return errors.New("update Label called with missing label id")
+	}
+
+	updatedCadLabel := &CadLabel{Id: *migration.Id}
+	if migration.Name != nil {
+		updatedCadLabel.Name = *migration.Name
+	}
+	if migration.LabelListVisibility != nil {
+		updatedCadLabel.LabelListVisibility = *migration.LabelListVisibility
+	}
+	if migration.MessageListVisibility != nil {
+		updatedCadLabel.MessageListVisibility = *migration.MessageListVisibility
+	}
+	if migration.Color != nil {
+		updatedCadLabel.Color = *migration.Color
+	}
+
+	_, err := PatchUserLabel(updatedCadLabel.Id, updatedCadLabel)
+	if err != nil {
+		log.Printf("Unable to update new filter")
 		return err
 	}
 
