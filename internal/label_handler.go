@@ -25,6 +25,8 @@ type CadLabel struct {
 	MessageListVisibility string        `json:"messageListVisibility,omitempty"`
 	MessagesTotal         int64         `json:"messagesTotal,omitempty"`
 	MessagesUnread        int64         `json:"messagesUnread,omitempty"`
+	ThreadsTotal          int64         `json:"threadsTotal,omitempty"`
+	ThreadsUnread         int64         `json:"threadsUnread,omitempty"`
 	Type                  string        `json:"type,omitempty"`
 	Color                 CadLabelColor `json:"color,omitempty"`
 }
@@ -138,6 +140,8 @@ func MarshalCadLabel(label *gmail.Label) *CadLabel {
 		MessageListVisibility: label.MessageListVisibility,
 		MessagesTotal:         label.MessagesTotal,
 		MessagesUnread:        label.MessagesUnread,
+		ThreadsTotal:          label.ThreadsTotal,
+		ThreadsUnread:         label.ThreadsUnread,
 		Type:                  label.Type,
 		Color:                 *labelcolor,
 	}

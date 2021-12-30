@@ -12,6 +12,9 @@ import (
 	"strings"
 )
 
+const UpdateMessagesMigration string = "update-messages"
+const DeleteLabelMigration string = "delete-label"
+
 type CadUpdateMessagesMigration struct {
 	QueryLabelIds  *[]string `json:"queryLabelIds"`
 	RemoveLabelIds *[]string `json:"removeLabelIds"`
@@ -50,6 +53,7 @@ type CadRawMigration struct {
 	Operation  *string         `json:"operation"`
 	Details    interface{}     `json:"-"`
 	RawDetails json.RawMessage `json:"details"`
+	Note       *string         `json:"note,omitempty"`
 }
 
 const migrationsPath string = "migrations"
@@ -75,7 +79,7 @@ func RunMigrations() error {
 
 		for _, migration := range migrations {
 			switch *migration.Operation {
-			case "update-messages":
+			case UpdateMessagesMigration:
 				messageMigration := CadUpdateMessagesMigration{}
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &messageMigration)
@@ -115,7 +119,7 @@ func RunMigrations() error {
 				if err != nil {
 					return err
 				}
-			case "delete-label":
+			case DeleteLabelMigration:
 				labelMigration := CadDeleteLabelMigration{}
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &labelMigration)
@@ -191,6 +195,22 @@ func getMigrationFiles() ([]string, error) {
 	})
 
 	return migrationFiles, nil
+}
+
+func CreateMigrationFile(migrations *[]CadRawMigration) error {
+	data, err := json.MarshalIndent(migrations, "", " ")
+	if err != nil {
+		log.Printf("Unable to marshal migration JSON: %v", err)
+		return err
+	}
+
+	err = ioutil.WriteFile("migrations/doctor.json", data, 0644)
+	if err != nil {
+		log.Printf("Unable write migrations: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func updateMessages(migration CadUpdateMessagesMigration) error {
