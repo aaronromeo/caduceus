@@ -54,7 +54,6 @@ func emptyLabelMigrations() error {
 	}
 
 	emptyLabels := []internal.CadLabel{}
-	// labelIdToNameLookup := map[string]string{}
 	nestedLabelLookup := map[string][]internal.CadLabel{}
 
 	for _, label := range localLabels {
@@ -63,7 +62,6 @@ func emptyLabelMigrations() error {
 			key := strings.Join(labelParts[:i+1], "/")
 			nestedLabelLookup[key] = append(nestedLabelLookup[key], label)
 		}
-		// labelIdToNameLookup[label.Id] = label.Name
 		if emptyLabel(label) {
 			emptyLabels = append(emptyLabels, label)
 		}
