@@ -71,5 +71,25 @@
             "id": "Label_73",
             "name": "***Delete"
         }
+    },
+    {
+        "operation":"replace-filters",
+        "details": {
+            "ids": [
+                "ANe1Bmh4O5uwdca1A3OjhueJI3pH9Aub4FheKLt4BdtoXzRW-4KAwRHWYBXEYu-Uqi1i0RT7hA",
+                "ANe1Bmi3bvGIvyrJYjqprjB1jCft44-xGRRhrg"
+            ],
+            "action": {
+                "addLabelIds": [
+                    "Label_238",
+                    "Label_252",
+                    "Label_265"
+                ],
+                "removeLabelIds": [
+                    "IMPORTANT",
+                    "INBOX"
+                ]
+            }
+        }
     }
 ]
