@@ -14,6 +14,12 @@ import (
 
 const UpdateMessagesMigration string = "update-messages"
 const DeleteLabelMigration string = "delete-label"
+const UpdateLabelMigration string = "update-label"
+const UpdateLabelsMigration string = "update-labels"
+const CreateLabelMigration string = "create-label"
+const ReplaceFiltersMigration string = "replace-filters"
+const DeleteFilterMigration string = "delete-filter"
+const CreateFilterMigration string = "create-filter"
 
 type CadUpdateMessagesMigration struct {
 	QueryLabelIds  *[]string `json:"queryLabelIds"`
@@ -26,6 +32,11 @@ type CadCreateFilterMigration struct {
 	Action   *CadAction   `json:"action,omitempty"`
 }
 
+type CadReplaceFiltersMigration struct {
+	Ids    *[]string  `json:"ids,omitempty"`
+	Action *CadAction `json:"action,omitempty"`
+}
+
 type CadDeleteFilterMigration struct {
 	Id *string `json:"id"`
 }
@@ -33,6 +44,13 @@ type CadDeleteFilterMigration struct {
 type CadUpdateLabelMigration struct {
 	Id                    *string        `json:"id"`
 	Name                  *string        `json:"name,omitempty"`
+	LabelListVisibility   *string        `json:"labelListVisibility,omitempty"`
+	MessageListVisibility *string        `json:"messageListVisibility,omitempty"`
+	Color                 *CadLabelColor `json:"color,omitempty"`
+}
+
+type CadUpdateLabelsMigration struct {
+	Ids                   *string        `json:"ids"`
 	LabelListVisibility   *string        `json:"labelListVisibility,omitempty"`
 	MessageListVisibility *string        `json:"messageListVisibility,omitempty"`
 	Color                 *CadLabelColor `json:"color,omitempty"`
@@ -87,7 +105,7 @@ func RunMigrations() error {
 				if err != nil {
 					return err
 				}
-			case "create-filter":
+			case CreateFilterMigration:
 				filterMigration := CadCreateFilterMigration{}
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &filterMigration)
@@ -95,7 +113,7 @@ func RunMigrations() error {
 				if err != nil {
 					return err
 				}
-			case "delete-filter":
+			case DeleteFilterMigration:
 				filterMigration := CadDeleteFilterMigration{}
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &filterMigration)
@@ -103,7 +121,7 @@ func RunMigrations() error {
 				if err != nil {
 					return err
 				}
-			case "update-label":
+			case UpdateLabelMigration:
 				labelMigration := CadUpdateLabelMigration{}
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &labelMigration)
@@ -111,7 +129,16 @@ func RunMigrations() error {
 				if err != nil {
 					return err
 				}
-			case "create-label":
+			case UpdateLabelsMigration:
+				// labelMigration := CadUpdateLabelMigration{}
+				// b, _ := migration.RawDetails.MarshalJSON()
+				// json.Unmarshal(b, &labelMigration)
+				// err := updateLabel(labelMigration)
+				// if err != nil {
+				// 	return err
+				// }
+				return errors.New("not implemented operation " + *migration.Operation)
+			case CreateLabelMigration:
 				labelMigration := CadCreateLabelMigration{}
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &labelMigration)
@@ -124,6 +151,14 @@ func RunMigrations() error {
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &labelMigration)
 				err := deleteLabel(labelMigration)
+				if err != nil {
+					return err
+				}
+			case ReplaceFiltersMigration:
+				filterMigration := CadReplaceFiltersMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &filterMigration)
+				err := replaceFilters(filterMigration)
 				if err != nil {
 					return err
 				}
@@ -242,12 +277,54 @@ func updateMessages(migration CadUpdateMessagesMigration) error {
 func createFilter(migration CadCreateFilterMigration) error {
 	fmt.Println("Creating filter...", migration.Criteria.From, migration.Criteria.To, migration.Criteria.Subject)
 
-	newCadFilter := &CadFilter{Action: migration.Action, Criteria: migration.Criteria}
-
-	_, err := CreateFilter(newCadFilter)
+	labels, err := GetLabels()
 	if err != nil {
-		log.Printf("Unable to create new filter")
+		log.Printf("Unable to retrieve labels\n")
 		return err
+	}
+
+	labelIdToType := map[string]string{}
+	for _, label := range labels {
+		labelIdToType[label.Id] = label.Type
+	}
+
+	sort.SliceStable(migration.Action.AddLabelIds, func(i, j int) bool {
+		return labelIdToType[migration.Action.AddLabelIds[i]] < labelIdToType[migration.Action.AddLabelIds[j]]
+	})
+
+	for _, labelId := range migration.Action.RemoveLabelIds {
+		if labelIdToType[labelId] == "user" {
+			log.Printf("Unable to create filter with user label removeLabelId %s \n", labelId)
+			return fmt.Errorf("unable to create filter with user label removeLabelId %s", labelId)
+		}
+	}
+
+	newFilters := []*CadFilter{}
+	action := &CadAction{RemoveLabelIds: migration.Action.RemoveLabelIds}
+	currentNewCadFilter := &CadFilter{Action: action, Criteria: migration.Criteria}
+	userLabelCount := 0
+	for _, labelId := range migration.Action.AddLabelIds {
+		if labelIdToType[labelId] == "user" && userLabelCount >= 1 {
+			newFilters = append(newFilters, currentNewCadFilter)
+			action = &CadAction{AddLabelIds: []string{labelId}}
+			userLabelCount = 1
+		} else {
+			action.AddLabelIds = append(currentNewCadFilter.Action.AddLabelIds, labelId)
+			if labelIdToType[labelId] == "user" {
+				userLabelCount += 1
+			}
+		}
+		currentNewCadFilter = &CadFilter{Action: action, Criteria: migration.Criteria}
+	}
+	newFilters = append(newFilters, currentNewCadFilter)
+
+	for _, filter := range newFilters {
+		fmt.Printf("\tCreating subfilter...\n")
+		_, err := CreateFilter(filter)
+		if err != nil {
+			log.Printf("Unable to create new filter")
+			return err
+		}
 	}
 
 	return nil
@@ -336,6 +413,57 @@ func updateLabel(migration CadUpdateLabelMigration) error {
 	if err != nil {
 		log.Printf("Unable to update new filter")
 		return err
+	}
+
+	return nil
+}
+
+func replaceFilters(migration CadReplaceFiltersMigration) error {
+	fmt.Println("Replacing filters...")
+
+	if migration.Ids == nil || len(*migration.Ids) == 0 {
+		log.Printf("Label Id cannot be nil")
+		return errors.New("replace Filters called without ids")
+	}
+
+	filterIdCriteriaMap := map[string]CadCriteria{}
+	filtersToDelete := []*CadFilter{}
+
+	// Verify the filters with the associated IDs exist and get criteria
+	for _, id := range *migration.Ids {
+		cadFilter := &CadFilter{Id: id}
+		cadFilter, err := GetFilter(cadFilter)
+		if err != nil {
+			log.Printf("Unable to retrieve filter %s", id)
+			return err
+		}
+		filterIdCriteriaMap[id] = *cadFilter.Criteria
+		filtersToDelete = append(filtersToDelete, cadFilter)
+	}
+
+	for _, cadfilter := range filtersToDelete {
+		criteria := filterIdCriteriaMap[cadfilter.Id]
+
+		fmt.Printf("\tDeleting filter... %s\n", cadfilter.Id)
+		deleteFilterMigration := CadDeleteFilterMigration{
+			Id: &cadfilter.Id,
+		}
+		err := deleteFilter(deleteFilterMigration)
+		if err != nil {
+			log.Printf("Unable to delete filter %s", cadfilter.Id)
+			return err
+		}
+
+		fmt.Println("\tCreate filter... ", &criteria)
+		createFilterMigration := CadCreateFilterMigration{
+			Criteria: &criteria,
+			Action:   migration.Action,
+		}
+		err = createFilter(createFilterMigration)
+		if err != nil {
+			log.Printf("Unable to create filter")
+			return err
+		}
 	}
 
 	return nil
