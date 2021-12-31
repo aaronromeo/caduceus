@@ -2,8 +2,10 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"sort"
 
 	"google.golang.org/api/gmail/v1"
 )
@@ -56,6 +58,23 @@ func GetFilters() ([]*CadFilter, error) {
 	for _, filter := range r.Filter {
 		filters = append(filters, MarshalCadFilter(filter))
 	}
+	sort.SliceStable(filters, func(i, j int) bool {
+		fi := fmt.Sprintf(
+			"%s%s%s",
+			filters[i].Criteria.From,
+			filters[i].Criteria.Query,
+			filters[i].Criteria.To,
+		)
+		fj := fmt.Sprintf(
+			"%s%s%s",
+			filters[j].Criteria.From,
+			filters[j].Criteria.Query,
+			filters[j].Criteria.To,
+		)
+
+		return fi < fj
+	})
+
 	return filters, nil
 }
 
@@ -120,10 +139,11 @@ func MarshalCadFilter(filter *gmail.Filter) *CadFilter {
 		Size:           filter.Criteria.Size,
 		SizeComparison: filter.Criteria.SizeComparison,
 	}
-	action := &CadAction{
-		AddLabelIds:    filter.Action.AddLabelIds,
-		RemoveLabelIds: filter.Action.RemoveLabelIds,
-		Forward:        filter.Action.Forward,
+	action := &CadAction{}
+	if filter.Action != nil {
+		action.AddLabelIds = filter.Action.AddLabelIds
+		action.RemoveLabelIds = filter.Action.RemoveLabelIds
+		action.Forward = filter.Action.Forward
 	}
 	data := &CadFilter{
 		Id:       filter.Id,
