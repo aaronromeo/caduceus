@@ -6,8 +6,10 @@ import (
 	"io/ioutil"
 	"log"
 	"sort"
+	"time"
 
 	"google.golang.org/api/gmail/v1"
+	"google.golang.org/api/googleapi"
 )
 
 const filterdatafile string = "data/filters.json"
@@ -103,12 +105,25 @@ func CreateFilter(cadFilter *CadFilter) (*CadFilter, error) {
 
 	user := "me"
 	gmailFilter := cadFilter.MarshalGmail()
-	filter, err := srv.Users.Settings.Filters.Create(user, gmailFilter).Do()
-	if err != nil {
-		log.Printf("Unable to create filter: %v", err)
-		return nil, err
+	retry := 3
+	for retry > 0 {
+		filter, err := srv.Users.Settings.Filters.Create(user, gmailFilter).Do()
+		if err != nil {
+			gErr, ok := err.(*googleapi.Error)
+
+			log.Printf("Unable to create filter: %v\n", err)
+			if ok && (gErr.Code == 503 || gErr.Code == 400) {
+				retry -= 1
+				log.Printf("Retrying...\n")
+				time.Sleep(15 * time.Second)
+			} else {
+				return nil, err
+			}
+		} else {
+			return MarshalCadFilter(filter), nil
+		}
 	}
-	return MarshalCadFilter(filter), nil
+	return nil, err
 }
 
 func DeleteFilter(cadFilter *CadFilter) error {
