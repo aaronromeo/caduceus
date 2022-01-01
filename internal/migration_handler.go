@@ -19,6 +19,7 @@ const UpdateLabelsMigration string = "update-labels"
 const CreateLabelMigration string = "create-label"
 const ReplaceFiltersMigration string = "replace-filters"
 const DeleteFilterMigration string = "delete-filter"
+const DeleteFiltersMigration string = "delete-filters"
 const CreateFilterMigration string = "create-filter"
 
 type CadUpdateMessagesMigration struct {
@@ -33,12 +34,16 @@ type CadCreateFilterMigration struct {
 }
 
 type CadReplaceFiltersMigration struct {
-	Ids    *[]string  `json:"ids,omitempty"`
+	Ids    *[]string  `json:"ids"`
 	Action *CadAction `json:"action,omitempty"`
 }
 
 type CadDeleteFilterMigration struct {
 	Id *string `json:"id"`
+}
+
+type CadDeleteFiltersMigration struct {
+	Ids *[]string `json:"ids"`
 }
 
 type CadUpdateLabelMigration struct {
@@ -75,6 +80,8 @@ type CadRawMigration struct {
 }
 
 const migrationsPath string = "migrations"
+
+var indent string = ""
 
 func RunMigrations() error {
 	migrationFiles, err := getMigrationFiles()
@@ -118,6 +125,14 @@ func RunMigrations() error {
 				b, _ := migration.RawDetails.MarshalJSON()
 				json.Unmarshal(b, &filterMigration)
 				err := deleteFilter(filterMigration)
+				if err != nil {
+					return err
+				}
+			case DeleteFiltersMigration:
+				filtersMigration := CadDeleteFiltersMigration{}
+				b, _ := migration.RawDetails.MarshalJSON()
+				json.Unmarshal(b, &filtersMigration)
+				err := deleteFilters(filtersMigration)
 				if err != nil {
 					return err
 				}
@@ -275,7 +290,7 @@ func updateMessages(migration CadUpdateMessagesMigration) error {
 }
 
 func createFilter(migration CadCreateFilterMigration) error {
-	fmt.Println("Creating filter...", migration.Criteria.From, migration.Criteria.To, migration.Criteria.Subject)
+	fmt.Printf("%sCreating filter...%s %s %s\n", indent, migration.Criteria.From, migration.Criteria.To, migration.Criteria.Subject)
 
 	labels, err := GetLabels()
 	if err != nil {
@@ -318,20 +333,22 @@ func createFilter(migration CadCreateFilterMigration) error {
 	}
 	newFilters = append(newFilters, currentNewCadFilter)
 
+	indent = fmt.Sprintf("%s\t", indent)
 	for _, filter := range newFilters {
-		fmt.Printf("\tCreating subfilter...\n")
+		fmt.Printf("%sCreating subfilter...\n", indent)
 		_, err := CreateFilter(filter)
 		if err != nil {
 			log.Printf("Unable to create new filter")
 			return err
 		}
 	}
+	indent = indent[:len(indent)-1]
 
 	return nil
 }
 
 func deleteFilter(migration CadDeleteFilterMigration) error {
-	fmt.Println("Deleting filter...", *migration.Id)
+	fmt.Printf("%sDeleting filter...%s\n", indent, *migration.Id)
 
 	oldCadFilter := &CadFilter{Id: *migration.Id}
 	err := DeleteFilter(oldCadFilter)
@@ -339,6 +356,23 @@ func deleteFilter(migration CadDeleteFilterMigration) error {
 		log.Printf("Unable to delete filter %v", *migration.Id)
 		return err
 	}
+
+	return nil
+}
+
+func deleteFilters(bulkMigration CadDeleteFiltersMigration) error {
+	fmt.Println("Deleting multiple filters...")
+
+	indent = fmt.Sprintf("%s\t", indent)
+	for _, id := range *bulkMigration.Ids {
+		migration := &CadDeleteFilterMigration{Id: &id}
+		err := deleteFilter(*migration)
+		if err != nil {
+			log.Printf("Unable to delete filter %v", *migration.Id)
+			return err
+		}
+	}
+	indent = indent[:len(indent)-1]
 
 	return nil
 }
@@ -441,10 +475,11 @@ func replaceFilters(migration CadReplaceFiltersMigration) error {
 		filtersToDelete = append(filtersToDelete, cadFilter)
 	}
 
+	indent = fmt.Sprintf("%s\t", indent)
 	for _, cadfilter := range filtersToDelete {
 		criteria := filterIdCriteriaMap[cadfilter.Id]
 
-		fmt.Printf("\tDeleting filter... %s\n", cadfilter.Id)
+		fmt.Printf("%sDeleting filter... %s\n", indent, cadfilter.Id)
 		deleteFilterMigration := CadDeleteFilterMigration{
 			Id: &cadfilter.Id,
 		}
@@ -454,7 +489,7 @@ func replaceFilters(migration CadReplaceFiltersMigration) error {
 			return err
 		}
 
-		fmt.Println("\tCreate filter... ", &criteria)
+		fmt.Printf("%sCreate filter... %s %s %s\n", indent, criteria.From, criteria.To, criteria.Subject)
 		createFilterMigration := CadCreateFilterMigration{
 			Criteria: &criteria,
 			Action:   migration.Action,
@@ -465,6 +500,7 @@ func replaceFilters(migration CadReplaceFiltersMigration) error {
 			return err
 		}
 	}
+	indent = indent[:len(indent)-1]
 
 	return nil
 }

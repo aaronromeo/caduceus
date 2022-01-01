@@ -67,6 +67,7 @@ func FetchLabels() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("\tFound %d labels\n", len(labels))
 }
 
 func FetchFilters() {
@@ -79,6 +80,7 @@ func FetchFilters() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("\tFound %d filters\n", len(filters))
 }
 
 func contains(s []string, str string) bool {
