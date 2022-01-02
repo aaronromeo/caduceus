@@ -105,17 +105,17 @@ func CreateFilter(cadFilter *CadFilter) (*CadFilter, error) {
 
 	user := "me"
 	gmailFilter := cadFilter.MarshalGmail()
-	retry := 0
-	for retry < 3 {
+	retry := 3
+	for retry > 0 {
 		filter, err := srv.Users.Settings.Filters.Create(user, gmailFilter).Do()
 		if err != nil {
 			gErr, ok := err.(*googleapi.Error)
 
 			log.Printf("Unable to create filter: %v\n", err)
 			if ok && (gErr.Code == 503 || gErr.Code == 400) {
-				retry += 1
+				retry -= 1
 				log.Printf("Retrying after a nap...\n")
-				time.Sleep(60 * time.Second * time.Duration(retry))
+				time.Sleep(60 * time.Second * time.Duration(10/retry))
 			} else {
 				return nil, err
 			}

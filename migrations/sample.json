@@ -91,5 +91,14 @@
                 ]
             }
         }
+    },
+    {
+        "operation": "delete-filters",
+        "details": {
+            "ids": [
+                "ANe1BmgZEn4o2JV1NiFwVK5waMuAex8VdUVOTnPUx0aLQvwOHgmGySKN22WAkyML3pdoc77NxQ",
+                "ANe1BmgbHNXTLLJevBAkGIgK_8Rfrj-xsWXOhu_U6Gb4CPqG_pvQ_XYsWCs2gzZ8OPOimvyFpQ"
+            ]
+        }
     }
 ]

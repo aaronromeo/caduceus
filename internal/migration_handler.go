@@ -348,7 +348,7 @@ func createFilter(migration CadCreateFilterMigration) error {
 }
 
 func deleteFilter(migration CadDeleteFilterMigration) error {
-	fmt.Printf("%sDeleting filter...%s\n", indent, *migration.Id)
+	fmt.Printf("%sDeleting filter... %s\n", indent, *migration.Id)
 
 	oldCadFilter := &CadFilter{Id: *migration.Id}
 	err := DeleteFilter(oldCadFilter)
