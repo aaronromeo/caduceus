@@ -33,8 +33,10 @@ Build and run the sample using the following command from your working directory
 
   Available Commands:
     completion  Generate the autocompletion script for the specified shell
+    doctor      A brief description of your command
     fetch       Fetch Gmail resources
     help        Help about any command
+    migrate     Run a pending migration file located in the 'migrations' folder
 
   Flags:
     -h, --help     help for caduceus
@@ -54,6 +56,10 @@ The first time you run the sample, it prompts you to authorize access:
 ### Background
 The starting point for this code and run instructions is from the [Go quickstart](https://developers.google.com/gmail/api/quickstart/go)
 
+Finding data can be done with
+`cat data/filters.json | jq '.[] | select(.action.addLabelIds | index("Label_33")) | .id'`
+`cat data/labels.json | jq '.[] | select(.name | test("Promo/Webservice/")) | .id'`
+``for label in `cat data/labels.json | jq '.[] | select(.name | test("Promo/Webservice/")) | .id'`; do cat data/filters.json | jq ".[] | select(.action.addLabelIds | index($label)) | .id"; done | sed -e 's/$/,/'``
 
 ### Resources
 * [Google Cloud Platform](https://console.cloud.google.com/home/dashboard)
