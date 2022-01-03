@@ -13,6 +13,7 @@ import (
 )
 
 const filterdatafile string = "data/filters.json"
+const consolidatedfilterdatafile string = "data/consolidated_filters.json"
 
 type CadCriteria struct {
 	From           string `json:"from,omitempty"`
@@ -41,6 +42,19 @@ type CadFilter struct {
 	Criteria *CadCriteria   `json:"criteria,omitempty"`
 	Action   *CadAction     `json:"action,omitempty"`
 	Meta     *CadFilterMeta `json:"meta,omitempty"`
+}
+
+type CadConsolidatedAction struct {
+	AddLabelIds    []string `json:"addLabelIds,omitempty"`
+	RemoveLabelIds []string `json:"removeLabelIds,omitempty"`
+	Forwards       []string `json:"forwards,omitempty"`
+}
+
+type CadConsolidatedFilter struct {
+	Ids      *[]string              `json:"ids,omitempty"`
+	Criteria *CadCriteria           `json:"criteria,omitempty"`
+	Action   *CadConsolidatedAction `json:"action,omitempty"`
+	Meta     *CadFilterMeta         `json:"meta,omitempty"`
 }
 
 func GetFilters() ([]*CadFilter, error) {
@@ -231,5 +245,99 @@ func SaveLocalFilters(filters []*CadFilter) error {
 		log.Printf("Unable to persist filters: %v", err)
 		return err
 	}
+
+	consolidatedFilters, _ := consolidateFiltersByCriteria(filters)
+	for i, filter := range consolidatedFilters {
+		meta := &CadFilterMeta{}
+		for _, labelId := range filter.Action.AddLabelIds {
+			meta.Labels = append(meta.Labels, labelmap[labelId])
+		}
+		for _, labelId := range filter.Action.RemoveLabelIds {
+			meta.Labels = append(meta.Labels, labelmap[labelId])
+		}
+		consolidatedFilters[i].Meta = meta
+	}
+
+	b, err = json.MarshalIndent(consolidatedFilters, "", "  ")
+	if err != nil {
+		log.Printf("Unable to marshal filters: %v", err)
+		return err
+	}
+
+	err = ioutil.WriteFile(consolidatedfilterdatafile, b, 0664)
+	if err != nil {
+		log.Printf("Unable to persist filters: %v", err)
+		return err
+	}
+
 	return nil
+}
+
+func consolidateFiltersByCriteria(filters []*CadFilter) ([]*CadConsolidatedFilter, error) {
+	filterIdMap := map[string]*CadConsolidatedFilter{}
+
+	for _, filter := range filters {
+		criteriaKey := criteriaKey(*filter.Criteria)
+
+		if filterIdMap[criteriaKey] != nil {
+			consolidatedFilter := *filterIdMap[criteriaKey]
+			ids := *consolidatedFilter.Ids
+			action := *consolidatedFilter.Action
+			ids = append(ids, filter.Id)
+			action.AddLabelIds = append(action.AddLabelIds, filter.Action.AddLabelIds...)
+			action.RemoveLabelIds = append(action.RemoveLabelIds, filter.Action.RemoveLabelIds...)
+			if filter.Action.Forward != "" {
+				action.Forwards = append(action.Forwards, filter.Action.Forward)
+			}
+
+			filterIdMap[criteriaKey] = &CadConsolidatedFilter{
+				Ids:      &ids,
+				Action:   &action,
+				Criteria: filterIdMap[criteriaKey].Criteria,
+			}
+		} else {
+			ids := []string{filter.Id}
+			forwards := []string{}
+			if filter.Action.Forward != "" {
+				forwards = append(forwards, filter.Action.Forward)
+			}
+			action := CadConsolidatedAction{
+				AddLabelIds:    filter.Action.AddLabelIds,
+				RemoveLabelIds: filter.Action.RemoveLabelIds,
+				Forwards:       forwards,
+			}
+			filterIdMap[criteriaKey] = &CadConsolidatedFilter{
+				Ids:      &ids,
+				Action:   &action,
+				Criteria: filter.Criteria,
+			}
+		}
+	}
+
+	consolidatedFilters := []*CadConsolidatedFilter{}
+	for _, ccf := range filterIdMap {
+		consolidatedFilters = append(consolidatedFilters, ccf)
+	}
+	sort.SliceStable(consolidatedFilters, func(i, j int) bool {
+		fi := criteriaKey(*consolidatedFilters[i].Criteria)
+		fj := criteriaKey(*consolidatedFilters[j].Criteria)
+
+		return fi < fj
+	})
+
+	return consolidatedFilters, nil
+}
+
+func criteriaKey(criteria CadCriteria) string {
+	return fmt.Sprintf(
+		"%s|%s|%s|%s|%d|%s|%t|%t",
+		criteria.From,
+		criteria.To,
+		criteria.Query,
+		criteria.NegatedQuery,
+		criteria.Size,
+		criteria.SizeComparison,
+		criteria.HasAttachment,
+		criteria.ExcludeChats,
+	)
 }
