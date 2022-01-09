@@ -24,6 +24,7 @@ const CreateFilterMigration string = "create-filter"
 
 type CadUpdateMessagesMigration struct {
 	QueryLabelIds  *[]string `json:"queryLabelIds"`
+	QueryString    *string   `json:"query"`
 	RemoveLabelIds *[]string `json:"removeLabelIds"`
 	AddLabelIds    *[]string `json:"addLabelIds"`
 }
@@ -83,8 +84,8 @@ const migrationsPath string = "migrations"
 
 var indent string = ""
 
-func RunMigrations() error {
-	migrationFiles, err := getMigrationFiles()
+func RunMigrations(daily bool) error {
+	migrationFiles, err := getMigrationFiles(daily)
 	if err != nil {
 		log.Printf("Unable to fetch migration files: %v", err)
 		return err
@@ -182,14 +183,16 @@ func RunMigrations() error {
 			}
 		}
 
-		err = os.Rename(
-			migrationFile,
-			strings.ReplaceAll(
-				strings.ToLower(migrationFile), ".json", "-complete.json",
-			),
-		)
-		if err != nil {
-			return err
+		if !daily {
+			err = os.Rename(
+				migrationFile,
+				strings.ReplaceAll(
+					strings.ToLower(migrationFile), ".json", "-complete.json",
+				),
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -222,7 +225,7 @@ func (m *CadRawMigration) MarshalJSON() ([]byte, error) {
 	return json.Marshal((*cadRawMigration)(m))
 }
 
-func getMigrationFiles() ([]string, error) {
+func getMigrationFiles(daily bool) ([]string, error) {
 	files, err := os.ReadDir(migrationsPath)
 	if err != nil {
 		log.Printf("Unable to read the migrations directory: %v", err)
@@ -232,6 +235,9 @@ func getMigrationFiles() ([]string, error) {
 	migrationFiles := []string{}
 	for _, file := range files {
 		r, _ := regexp.Compile("[0-9]+.json$")
+		if daily {
+			r, _ = regexp.Compile("daily-[0-9]+.json$")
+		}
 		if r.MatchString(file.Name()) {
 			migrationFiles = append(migrationFiles, strings.Join([]string{migrationsPath, file.Name()}, "/"))
 		}
@@ -264,13 +270,13 @@ func CreateMigrationFile(migrations *[]CadRawMigration) error {
 }
 
 func updateMessages(migration CadUpdateMessagesMigration) error {
-	fmt.Println("Migrating messages...", migration.QueryLabelIds)
+	fmt.Println("Migrating messages...", *migration.QueryLabelIds, *migration.QueryString)
 
 	labels := []*CadLabel{}
 	for _, labelId := range *migration.QueryLabelIds {
 		labels = append(labels, &CadLabel{Id: labelId})
 	}
-	messageIds, err := GetMessagesIDsByLabelIDs(labels)
+	messageIds, err := GetMessagesIDsByLabelIDs(labels, migration.QueryString)
 	if err != nil {
 		log.Printf("Unable to retrieve message Ids: %v", err)
 		return err

@@ -52,6 +52,10 @@ The first time you run the sample, it prompts you to authorize access:
 1. Click the Accept button.
 1. Copy the code you're given, paste it into the command-line prompt, and press Enter.
 
+### Todo
+1. HTML email digest with unsubscribe suggestions
+1. Add filter criteria to the Doctor for email with unsubsribe links in the inbox
+1. Use the existing filters to archive contents of the inbox
 
 ### Background
 The starting point for this code and run instructions is from the [Go quickstart](https://developers.google.com/gmail/api/quickstart/go)

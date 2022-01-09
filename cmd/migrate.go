@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Daily bool = false
+
 // migrateCmd represents the migrate command
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
@@ -24,7 +26,7 @@ func runMigrations(cmd *cobra.Command, args []string) {
 		FetchFilters()
 	}()
 
-	err := internal.RunMigrations()
+	err := internal.RunMigrations(Daily)
 	if err != nil {
 		panic(err)
 	}
@@ -41,5 +43,5 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// migrateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	migrateCmd.Flags().BoolVarP(&Daily, "daily", "d", false, "Run daily migrations (files with the mask daily-[0-9]*.json)")
 }

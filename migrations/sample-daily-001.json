@@ -1,0 +1,122 @@
+[
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_252"],
+            "query": "older_than:2d",
+            "removeLabelIds": ["Label_252", "UNREAD"],
+            "addLabelIds": ["Label_238"]
+        },
+        "note": "News"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_251"],
+            "query": "older_than:7d",
+            "removeLabelIds": ["Label_251"],
+            "addLabelIds": ["Label_177"]
+        },
+        "note": "Notifications"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_268"],
+            "query": "older_than:30d",
+            "removeLabelIds": ["Label_268"],
+            "addLabelIds": ["Label_205"]
+        },
+        "note": "Tech"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_253"],
+            "query": "older_than:7d",
+            "removeLabelIds": ["Label_253"],
+            "addLabelIds": ["Label_232"]
+        },
+        "note": "Receipts"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_254"],
+            "query": "older_than:15d",
+            "removeLabelIds": ["Label_254", "UNREAD"],
+            "addLabelIds": ["Label_37"]
+        },
+        "note": "Professional"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_255"],
+            "query": "older_than:15d",
+            "removeLabelIds": ["Label_255", "UNREAD"],
+            "addLabelIds": ["Label_174"]
+        },
+        "note": "Finance"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_256"],
+            "query": "older_than:7d",
+            "removeLabelIds": ["Label_256", "UNREAD"],
+            "addLabelIds": ["Label_78"]
+        },
+        "note": "Political"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_257"],
+            "query": "older_than:3d",
+            "removeLabelIds": ["Label_257", "UNREAD"],
+            "addLabelIds": ["Label_78"]
+        },
+        "note": "Causes"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_258"],
+            "query": "older_than:3d",
+            "removeLabelIds": ["Label_258", "UNREAD"],
+            "addLabelIds": ["Label_34"]
+        },
+        "note": "EntertainmentAndHealth"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_259"],
+            "query": "older_than:3d",
+            "removeLabelIds": ["Label_259", "UNREAD"],
+            "addLabelIds": ["Label_33"]
+        },
+        "note": "Consumable"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_260"],
+            "query": "older_than:3d",
+            "removeLabelIds": ["Label_260", "UNREAD"],
+            "addLabelIds": ["Label_200"]
+        },
+        "note": "Travel"
+    },
+    {
+        "operation": "update-messages",
+        "details": {
+            "queryLabelIds": ["Label_267"],
+            "query": "older_than:3d",
+            "removeLabelIds": ["Label_267", "UNREAD"],
+            "addLabelIds": ["Label_39"]
+        },
+        "note": "Webservices"
+    }
+]

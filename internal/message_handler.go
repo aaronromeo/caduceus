@@ -8,7 +8,7 @@ import (
 
 const bulkLimit int = 1000
 
-func GetMessagesIDsByLabelIDs(labels []*CadLabel) ([]string, error) {
+func GetMessagesIDsByLabelIDs(labels []*CadLabel, query *string) ([]string, error) {
 	srv, err := GetService()
 	if err != nil {
 		log.Printf("Unable to retrieve Gmail client: %v", err)
@@ -25,11 +25,16 @@ func GetMessagesIDsByLabelIDs(labels []*CadLabel) ([]string, error) {
 	moreResults := true
 	pageToken := ""
 	for moreResults {
-		r, err := srv.Users.Messages.List(user).
+		req := srv.Users.Messages.List(user).
 			MaxResults(500).
 			PageToken(pageToken).
-			LabelIds(labelIds...).
-			Do()
+			LabelIds(labelIds...)
+
+		if query != nil {
+			req.Q(*query)
+		}
+
+		r, err := req.Do()
 		if err != nil {
 			log.Printf("Unable to retrieve messages: %v", err)
 			return nil, err
