@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
@@ -30,10 +32,44 @@ func runDoctor(cmd *cobra.Command, args []string) {
 	FetchLabels()
 	// FetchFilters()
 
+	prompt := promptui.Select{
+		Label: "Select Day",
+		Items: []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+			"Saturday", "Sunday"},
+	}
+
+	_, result, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	fmt.Printf("You choose %q\n", result)
+
 	fmt.Println("Analyzing results...")
 	err := emptyLabelMigrations()
+	criteriaAndSampleMessages, err := internal.GetMessageCriteriaForUnsubscribe(time.Now().Add(-time.Hour * 72).UTC())
 	if err != nil {
 		panic(err)
+	}
+	for _, cAndSM := range criteriaAndSampleMessages {
+		criteria := *cAndSM.Criteria
+		if criteria.Query != "" {
+			fmt.Println("query: ", criteria.Query)
+		} else if criteria.From != "" {
+			fmt.Println("from:", criteria.From)
+		} else if criteria.To != "" {
+			fmt.Println("to:", criteria.To)
+		}
+		subject := ""
+		for _, header := range (*cAndSM.SampleMessage).Payload.Headers {
+			if header.Name == "Subject" && header.Value != "" {
+				subject = header.Value
+			}
+
+		}
+		fmt.Println("\t\tmessage: ", subject)
 	}
 }
 
