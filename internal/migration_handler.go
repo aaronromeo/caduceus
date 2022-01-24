@@ -270,7 +270,14 @@ func CreateMigrationFile(migrations *[]CadRawMigration) error {
 }
 
 func updateMessages(migration CadUpdateMessagesMigration) error {
-	fmt.Println("Migrating messages...", *migration.QueryLabelIds, *migration.QueryString)
+	printMessages := []string{}
+	if migration.QueryLabelIds != nil {
+		printMessages = append(printMessages, *migration.QueryLabelIds...)
+	}
+	if migration.QueryString != nil {
+		printMessages = append(printMessages, *migration.QueryString)
+	}
+	fmt.Println("Migrating messages...", printMessages)
 
 	labels := []*CadLabel{}
 	for _, labelId := range *migration.QueryLabelIds {
