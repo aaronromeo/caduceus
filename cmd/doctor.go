@@ -31,15 +31,15 @@ to quickly create a Cobra application.`,
 
 const create_filter string = "Create Filter"
 const skip string = "Skip"
-
-// const ignore string = "Ignore"
+const yes string = "Yes"
+const no string = "No"
 const neverImportant string = "Never mark it as important"
 const alwaysImportant string = "Always mark it as important"
 
 func runDoctor(cmd *cobra.Command, args []string) {
 	updateLabelsPrompt := promptui.Select{
 		Label: "Update labels?",
-		Items: []string{"Yes", "No"},
+		Items: []string{yes, no},
 	}
 
 	_, updateLabelsResult, err := updateLabelsPrompt.Run()
@@ -49,13 +49,13 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	if updateLabelsResult == "Yes" {
+	if updateLabelsResult == yes {
 		FetchLabels()
 	}
 
 	updateFiltersPrompt := promptui.Select{
 		Label: "Update filters?",
-		Items: []string{"Yes", "No"},
+		Items: []string{yes, no},
 	}
 
 	_, updateFiltersResult, err := updateFiltersPrompt.Run()
@@ -65,7 +65,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	if updateFiltersResult == "Yes" {
+	if updateFiltersResult == yes {
 		FetchFilters()
 	}
 
@@ -132,8 +132,8 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 			prompt := promptui.Select{
 				Label: fmt.Sprintf("Delete label %s", label.Name),
 				Items: []string{
-					"yes",
-					"no",
+					yes,
+					no,
 				},
 			}
 
@@ -143,7 +143,7 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 				return nil, err
 			}
 
-			if result == "yes" {
+			if result == yes {
 				emptyLabelMigrations = append(emptyLabelMigrations, labelMigration)
 			}
 		} else {
@@ -201,7 +201,6 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 			Items: []string{
 				create_filter,
 				skip,
-				// ignore,
 			},
 		}
 
@@ -264,7 +263,7 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 
 			skipInboxPrompt := promptui.Select{
 				Label: "Skip the Inbox (Archive it)",
-				Items: []string{"Yes", "No"},
+				Items: []string{yes, no},
 			}
 
 			_, skipInboxResult, err := skipInboxPrompt.Run()
@@ -274,7 +273,7 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 				return returnMigrations, err
 			}
 
-			if skipInboxResult == "Yes" {
+			if skipInboxResult == yes {
 				selectedAction.RemoveLabelIds = append(
 					selectedAction.RemoveLabelIds,
 					"INBOX",
