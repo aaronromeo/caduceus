@@ -56,14 +56,15 @@ The first time you run the sample, it prompts you to authorize access:
 1. HTML email digest with unsubscribe suggestions
 1. Add filter criteria to the Doctor for email with unsubsribe links in the inbox
 1. Use the existing filters to archive contents of the inbox
+1. Figure out how to deal with the weekly expiring token
 
 ### Background
 The starting point for this code and run instructions is from the [Go quickstart](https://developers.google.com/gmail/api/quickstart/go)
 
-Finding data can be done with
-`cat data/filters.json | jq '.[] | select(.action.addLabelIds | index("Label_33")) | .id'`
-`cat data/labels.json | jq '.[] | select(.name | test("Promo/Webservice/")) | .id'`
-``for label in `cat data/labels.json | jq '.[] | select(.name | test("Promo/Webservice/")) | .id'`; do cat data/filters.json | jq ".[] | select(.action.addLabelIds | index($label)) | .id"; done | sed -e 's/$/,/'``
+Finding data can be done with `jq`
+* `cat data/filters.json | jq '.[] | select(.action.addLabelIds | index("Label_33")) | .id'`
+* `cat data/labels.json | jq '.[] | select(.name | test("Promo/Webservice/")) | .id'`
+* ``for label in `cat data/labels.json | jq '.[] | select(.name | test("Promo/Webservice/")) | .id'`; do cat data/filters.json | jq ".[] | select(.action.addLabelIds | index($label)) | .id"; done | sed -e 's/$/,/'``
 
 ### Resources
 * [Google Cloud Platform](https://console.cloud.google.com/home/dashboard)
