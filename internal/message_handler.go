@@ -43,6 +43,7 @@ func GetMessageCriteriaForUnsubscribe(until time.Time) ([]*CadCriteraAndSampleMe
 			return nil, err
 		}
 		for _, messageFragment := range r.Messages {
+			// Previously tried Regex
 			// <a.*?href.*?>[\S]*?[uU]nsubscribe[^<]?<\/a>
 			// <a.*?href.*?>[\S]*?[uU]nsubscribe[\S]*?<\/a>
 			// <a.*?href.*?>[\S]*?[uU]nsubscribe[\S\W]*?<\/a>
@@ -84,7 +85,6 @@ func GetMessageCriteriaForUnsubscribe(until time.Time) ([]*CadCriteraAndSampleMe
 								} else {
 									listId = parts[1]
 								}
-								// fmt.Printf("\t\t%s\t'%s'\tlist-id:%s\n", header.Name, header.Value, listId)
 								criteria.Query = fmt.Sprintf("list:\\\"%s\\\"", listId)
 							}
 						}

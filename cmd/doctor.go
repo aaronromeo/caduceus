@@ -304,10 +304,6 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 				)
 			}
 
-			// fmt.Printf("You choose %q\n", applyTheLabelResult)
-			// fmt.Printf("You choose %q\n", skipInboxResult)
-			// fmt.Printf("You choose %q\n", importanceResult)
-
 			operation := internal.CreateFilterMigration
 			note := "Unsubscribed by the doctor"
 			labelMigration := internal.CadRawMigration{
