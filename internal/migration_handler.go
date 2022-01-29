@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 const UpdateMessagesMigration string = "update-messages"
@@ -260,7 +261,8 @@ func CreateMigrationFile(migrations *[]CadRawMigration) error {
 		return err
 	}
 
-	err = ioutil.WriteFile("migrations/doctor.json", data, 0644)
+	t := time.Now()
+	err = ioutil.WriteFile(fmt.Sprintf("migrations/%s.json", t.Format("20060201-0304")), data, 0644)
 	if err != nil {
 		log.Printf("Unable write migrations: %v", err)
 		return err

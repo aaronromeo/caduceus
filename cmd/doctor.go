@@ -31,24 +31,58 @@ to quickly create a Cobra application.`,
 
 const create_filter string = "Create Filter"
 const skip string = "Skip"
-const ignore string = "Ignore"
+
+// const ignore string = "Ignore"
 const neverImportant string = "Never mark it as important"
 const alwaysImportant string = "Always mark it as important"
 
 func runDoctor(cmd *cobra.Command, args []string) {
-	FetchLabels()
-	// FetchFilters()
+	updateLabelsPrompt := promptui.Select{
+		Label: "Update labels?",
+		Items: []string{"Yes", "No"},
+	}
 
-	// fmt.Println("Analyzing results...")
-	// err := emptyLabelMigrations()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	_, updateLabelsResult, err := updateLabelsPrompt.Run()
 
-	err := unsubscribeMigrations()
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		panic(err)
+	}
+
+	if updateLabelsResult == "Yes" {
+		FetchLabels()
+	}
+
+	updateFiltersPrompt := promptui.Select{
+		Label: "Update filters?",
+		Items: []string{"Yes", "No"},
+	}
+
+	_, updateFiltersResult, err := updateFiltersPrompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		panic(err)
+	}
+
+	if updateFiltersResult == "Yes" {
+		FetchFilters()
+	}
+
+	fmt.Println("Analyzing results...")
+	emptyLabelCadMigrations, err := emptyLabelMigrations()
 	if err != nil {
 		panic(err)
 	}
+
+	unsubscribeCadMigrations, err := unsubscribeMigrations()
+	if err != nil {
+		panic(err)
+	}
+
+	totalmigs := []internal.CadRawMigration{}
+	totalmigs = append(emptyLabelCadMigrations, unsubscribeCadMigrations...)
+	internal.CreateMigrationFile(&totalmigs)
 }
 
 func emptyLabel(l internal.CadLabel) bool {
@@ -60,11 +94,11 @@ func emptyLabel(l internal.CadLabel) bool {
 		l.ThreadsUnread == 0
 }
 
-func emptyLabelMigrations() error {
+func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 	localLabels, err := internal.ReadLocalLabels()
 	if err != nil {
 		log.Printf("Unable to read local labels: %v", err)
-		return err
+		return nil, err
 	}
 
 	emptyLabels := []internal.CadLabel{}
@@ -95,18 +129,35 @@ func emptyLabelMigrations() error {
 				Note: &note,
 			}
 
-			emptyLabelMigrations = append(emptyLabelMigrations, labelMigration)
+			prompt := promptui.Select{
+				Label: fmt.Sprintf("Delete label %s", label.Name),
+				Items: []string{
+					"yes",
+					"no",
+				},
+			}
+
+			_, result, err := prompt.Run()
+
+			if err != nil {
+				return nil, err
+			}
+
+			if result == "yes" {
+				emptyLabelMigrations = append(emptyLabelMigrations, labelMigration)
+			}
 		} else {
 			fmt.Printf("Skipping parent label %s\n", label.Name)
 		}
 	}
-	return internal.CreateMigrationFile(&emptyLabelMigrations)
+	return emptyLabelMigrations, nil
 }
 
-func unsubscribeMigrations() error {
+func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
+	returnMigrations := []internal.CadRawMigration{}
 	criteriaAndSampleMessages, err := internal.GetMessageCriteriaForUnsubscribe(time.Now().Add(-time.Hour * 72).UTC())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	unsubscribeMigrations := []internal.CadRawMigration{}
 
@@ -116,28 +167,34 @@ func unsubscribeMigrations() error {
 		introMessage := "\nMessage filtered by\n"
 		if criteria.Query != "" {
 			selectedFilter.Query = criteria.Query
-			fmt.Printf(introMessage)
+			fmt.Print(introMessage)
 			fmt.Printf("\tQuery: %s\n", selectedFilter.Query)
 		} else if criteria.From != "" {
 			selectedFilter.From = criteria.From
-			fmt.Printf(introMessage)
+			fmt.Print(introMessage)
 			fmt.Printf("\tFrom: %s\n", selectedFilter.From)
 		} else if criteria.To != "" {
 			selectedFilter.To = criteria.To
-			fmt.Printf(introMessage)
+			fmt.Print(introMessage)
 			fmt.Printf("\tTo: %s\n", selectedFilter.To)
 		} else {
 			continue
 		}
 
+		from := ""
+		to := ""
 		subject := ""
 		for _, header := range (*cAndSM.SampleMessage).Payload.Headers {
 			if header.Name == "Subject" && header.Value != "" {
 				subject = header.Value
+			} else if header.Name == "From" && header.Value != "" {
+				from = header.Value
+			} else if header.Name == "To" && header.Value != "" {
+				to = header.Value
 			}
 
 		}
-		fmt.Println("\tSample subject: ", subject)
+		fmt.Printf("\tFrom: %s\n\tTo: %s\n\tSample subject: %s\n", from, to, subject)
 
 		prompt := promptui.Select{
 			Label: "Select action",
@@ -151,10 +208,8 @@ func unsubscribeMigrations() error {
 		_, result, err := prompt.Run()
 
 		if err != nil {
-			return err
+			return returnMigrations, err
 		}
-
-		// fmt.Printf("You choose %q\n", result)
 
 		if result == create_filter {
 			selectedAction := internal.CadAction{}
@@ -168,7 +223,7 @@ func unsubscribeMigrations() error {
 
 				found := false
 				for _, label := range localLabels {
-					if strings.ToLower(label.Name) == strings.ToLower(input) {
+					if strings.EqualFold(label.Name, input) {
 						found = true
 						break
 					}
@@ -190,7 +245,7 @@ func unsubscribeMigrations() error {
 
 			if err != nil {
 				fmt.Printf("Prompt failed %v\n", err)
-				return err
+				return returnMigrations, err
 			}
 
 			if applyTheLabelResult != "" {
@@ -198,7 +253,7 @@ func unsubscribeMigrations() error {
 
 				labelId := ""
 				for _, label := range localLabels {
-					if strings.ToLower(label.Name) == strings.ToLower(applyTheLabelResult) {
+					if strings.EqualFold(label.Name, applyTheLabelResult) {
 						labelId = label.Id
 						break
 					}
@@ -216,7 +271,7 @@ func unsubscribeMigrations() error {
 
 			if err != nil {
 				fmt.Printf("Prompt failed %v\n", err)
-				return err
+				return returnMigrations, err
 			}
 
 			if skipInboxResult == "Yes" {
@@ -235,7 +290,7 @@ func unsubscribeMigrations() error {
 
 			if err != nil {
 				fmt.Printf("Prompt failed %v\n", err)
-				return err
+				return returnMigrations, err
 			}
 
 			if importanceResult == alwaysImportant {
@@ -255,7 +310,7 @@ func unsubscribeMigrations() error {
 			// fmt.Printf("You choose %q\n", importanceResult)
 
 			operation := internal.CreateFilterMigration
-			note := fmt.Sprint("Unsubscribed by the doctor")
+			note := "Unsubscribed by the doctor"
 			labelMigration := internal.CadRawMigration{
 				Operation: &operation,
 				Details: internal.CadCreateFilterMigration{
@@ -269,13 +324,7 @@ func unsubscribeMigrations() error {
 		}
 	}
 
-	err = internal.CreateMigrationFile(&unsubscribeMigrations)
-	if err != nil {
-		fmt.Printf("Unable to create migration file %v\n", err)
-		return err
-	}
-
-	return nil
+	return unsubscribeMigrations, nil
 }
 
 func init() {
