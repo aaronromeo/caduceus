@@ -54,7 +54,6 @@ The first time you run the sample, it prompts you to authorize access:
 
 ### Todo
 1. HTML email digest with unsubscribe suggestions
-1. Add filter criteria to the Doctor for email with unsubsribe links in the inbox
 1. Use the existing filters to archive contents of the inbox
 1. Figure out how to deal with the weekly expiring token
 

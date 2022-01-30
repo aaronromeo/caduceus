@@ -2,8 +2,10 @@ package internal
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -134,6 +136,41 @@ func GetMessageCriteriaForUnsubscribe(until time.Time) ([]*CadCriteraAndSampleMe
 		criteria = append(criteria, value)
 	}
 	return criteria, nil
+}
+
+func GetMessageIDsInInboxByFilterCriteria(filter *CadFilter) ([]string, error) {
+	labelInbox := []*CadLabel{}
+	labelInbox = append(labelInbox, &CadLabel{
+		Id: "INBOX", Name: "INBOX",
+	})
+
+	extraCriteria := false
+	q := "has:nouserlabels"
+	criteriaValue := reflect.ValueOf(filter.Criteria).Elem()
+	for i := 0; i < criteriaValue.NumField(); i++ {
+		if criteriaValue.Field(i).String() != "" {
+			switch criteriaValue.Type().Field(i).Name {
+			case "Query":
+				extraCriteria = true
+				q = fmt.Sprintf("%s \"%s\"", q, criteriaValue.Field(i))
+			case "HasAttachment":
+			case "ExcludeChats":
+			case "Size":
+			default:
+				extraCriteria = true
+				q = fmt.Sprintf("%s %s=\"%s\"", q, strings.ToLower(criteriaValue.Type().Field(i).Name), criteriaValue.Field(i))
+			}
+		}
+	}
+
+	if !extraCriteria {
+		return nil, errors.New("no filter criteria")
+	}
+
+	fmt.Println(q) // TODO: Remove
+
+	returnIDs, err := GetMessagesIDsByLabelIDs(labelInbox, &q)
+	return returnIDs, err
 }
 
 func GetMessagesIDsByLabelIDs(labels []*CadLabel, query *string) ([]string, error) {

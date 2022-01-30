@@ -94,6 +94,26 @@ func GetFilters() ([]*CadFilter, error) {
 	return filters, nil
 }
 
+func SelectArchiveFilters() ([]CadFilter, error) {
+	filters, err := ReadLocalFilters()
+	if err != nil {
+		log.Printf("Unable to read local filters file: %v", err)
+		return nil, err
+	}
+
+	archiveFilters := []CadFilter{}
+	for _, filter := range filters {
+		for _, label := range filter.Action.RemoveLabelIds {
+			if label == "INBOX" {
+				archiveFilters = append(archiveFilters, filter)
+				break
+			}
+		}
+	}
+
+	return archiveFilters, nil
+}
+
 func GetFilter(cadFilter *CadFilter) (*CadFilter, error) {
 	srv, err := GetService()
 	if err != nil {
@@ -271,6 +291,24 @@ func SaveLocalFilters(filters []*CadFilter) error {
 	}
 
 	return nil
+}
+
+func ReadLocalFilters() ([]CadFilter, error) {
+	if !fileExists(filterdatafile) {
+		return []CadFilter{}, nil
+	}
+
+	b, err := ioutil.ReadFile(filterdatafile)
+	if err != nil {
+		log.Printf("Unable to read local filter data file: %v", err)
+		return nil, err
+	}
+	var filters []CadFilter
+	if err := json.Unmarshal(b, &filters); err != nil {
+		return []CadFilter{}, err
+	}
+
+	return filters, nil
 }
 
 func consolidateFiltersByCriteria(filters []*CadFilter) ([]*CadConsolidatedFilter, error) {
