@@ -96,6 +96,7 @@ func RunMigrations(daily bool) error {
 	for _, migrationFile := range migrationFiles {
 		var migrations []CadRawMigration
 
+		fmt.Printf("Processing migration %s\n", migrationFile)
 		b, err := ioutil.ReadFile(migrationFile)
 		if err != nil {
 			log.Printf("Unable to read the migration file: %v", err)
@@ -236,9 +237,9 @@ func getMigrationFiles(daily bool) ([]string, error) {
 
 	migrationFiles := []string{}
 	for _, file := range files {
-		r, _ := regexp.Compile("[0-9]+.json$")
+		r, _ := regexp.Compile("^[0-9]+.json$")
 		if daily {
-			r, _ = regexp.Compile("daily-[0-9]+.json$")
+			r, _ = regexp.Compile("^daily-[0-9]+.json$")
 		}
 		if r.MatchString(file.Name()) {
 			migrationFiles = append(migrationFiles, strings.Join([]string{migrationsPath, file.Name()}, "/"))
