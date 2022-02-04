@@ -37,14 +37,15 @@ const neverImportant string = "Never mark it as important"
 const alwaysImportant string = "Always mark it as important"
 
 var FlagSuggestions bool
-var FlagInteractive bool
+var FlagDirect bool
 var FlagFilterMaintenance bool
+var FlagFetch bool
 
 func runDoctor(cmd *cobra.Command, args []string) {
 	updateLabelsResult := yes
 	updateFiltersResult := yes
 
-	if FlagInteractive {
+	if !FlagDirect {
 		var err error
 
 		updateLabelsPrompt := promptui.Select{
@@ -70,9 +71,12 @@ func runDoctor(cmd *cobra.Command, args []string) {
 			fmt.Printf("Prompt failed %v\n", err)
 			panic(err)
 		}
-	} else if FlagFilterMaintenance {
+	} else if FlagFetch {
 		updateLabelsResult = yes
 		updateFiltersResult = yes
+	} else {
+		updateLabelsResult = no
+		updateFiltersResult = no
 	}
 
 	if updateLabelsResult == yes {
@@ -87,11 +91,13 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		fmt.Println("Analyzing results...")
 	}
 
-	if FlagSuggestions && FlagInteractive {
+	if FlagSuggestions && !FlagDirect {
 		interactiveSuggestions()
 	}
 
 	if FlagFilterMaintenance {
+		totalmigs := []internal.CadRawMigration{}
+
 		filters, err := internal.SelectArchiveFilters()
 		if err != nil {
 			fmt.Printf("Maintenance failed %v\n", err)
@@ -99,14 +105,29 @@ func runDoctor(cmd *cobra.Command, args []string) {
 		}
 
 		for _, archiveFilter := range filters {
-			// cadFilter := internal.CadFilter{
-			// 	Id: archiveFilter.Id,
-			// }
-			// ids, _ := internal.GetMessageIDsInInboxByFilterCriteria(archiveFilter)
+			fmt.Printf("\tSearching for filter ID %s", archiveFilter.Id)
+			ids, _ := internal.GetMessageIDsInInboxByFilterCriteria(&archiveFilter)
 
-			fmt.Println(archiveFilter)
+			if len(ids) != 0 {
+				fmt.Print("\t\tFound results\n")
 
-			// fmt.Println(ids)
+				operation := internal.UpdateMessagesMigration
+				note := "Archived message identified by the doctor"
+				archiveMigration := internal.CadRawMigration{
+					Operation: &operation,
+					Details: internal.CadUpdateMessagesMigration{
+						MessageIds:     &ids,
+						RemoveLabelIds: &archiveFilter.Action.RemoveLabelIds,
+						AddLabelIds:    &archiveFilter.Action.AddLabelIds,
+					},
+					Note: &note,
+				}
+
+				totalmigs = append(totalmigs, archiveMigration)
+			}
+		}
+		if len(totalmigs) > 0 {
+			internal.CreateMigrationFile(&totalmigs)
 		}
 	}
 }
@@ -376,7 +397,8 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// doctorCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	doctorCmd.Flags().BoolVarP(&FlagInteractive, "interactive", "i", true, "Interactive vs direct mode")
+	doctorCmd.Flags().BoolVarP(&FlagDirect, "direct", "d", false, "The opposite of interactive mode")
+	doctorCmd.Flags().BoolVarP(&FlagFetch, "fetch", "f", true, "Fetch the labels and filters (only used in direct mode)")
 	doctorCmd.Flags().BoolVarP(&FlagSuggestions, "suggestions", "s", true, "Generate filter and label suggestions if in interactive mode")
-	doctorCmd.Flags().BoolVarP(&FlagFilterMaintenance, "maintenance", "m", true, "Generate message cleanup based on existing filters")
+	doctorCmd.Flags().BoolVarP(&FlagFilterMaintenance, "maintenance", "m", false, "Generate message cleanup based on existing filters")
 }

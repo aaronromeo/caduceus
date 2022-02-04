@@ -25,6 +25,7 @@ const CreateFilterMigration string = "create-filter"
 
 type CadUpdateMessagesMigration struct {
 	QueryLabelIds  *[]string `json:"queryLabelIds"`
+	MessageIds     *[]string `json:"messageIds"`
 	QueryString    *string   `json:"query"`
 	RemoveLabelIds *[]string `json:"removeLabelIds"`
 	AddLabelIds    *[]string `json:"addLabelIds"`
@@ -273,6 +274,9 @@ func CreateMigrationFile(migrations *[]CadRawMigration) error {
 
 func updateMessages(migration CadUpdateMessagesMigration) error {
 	printMessages := []string{}
+	if migration.MessageIds != nil {
+		printMessages = append(printMessages, *migration.MessageIds...)
+	}
 	if migration.QueryLabelIds != nil {
 		printMessages = append(printMessages, *migration.QueryLabelIds...)
 	}
@@ -282,14 +286,22 @@ func updateMessages(migration CadUpdateMessagesMigration) error {
 	fmt.Println("Migrating messages...", printMessages)
 
 	labels := []*CadLabel{}
-	for _, labelId := range *migration.QueryLabelIds {
-		labels = append(labels, &CadLabel{Id: labelId})
+	if migration.QueryLabelIds != nil {
+		for _, labelId := range *migration.QueryLabelIds {
+			labels = append(labels, &CadLabel{Id: labelId})
+		}
 	}
-	messageIds, err := GetMessagesIDsByLabelIDs(labels, migration.QueryString)
-	if err != nil {
-		log.Printf("Unable to retrieve message Ids: %v", err)
-		return err
+	messageIds := []string{}
+	var err error
+	if len(labels) > 0 {
+		messageIds, err = GetMessagesIDsByLabelIDs(labels, migration.QueryString)
+		if err != nil {
+			log.Printf("Unable to retrieve message Ids: %v", err)
+			return err
+		}
+
 	}
+	messageIds = append(messageIds, *migration.MessageIds...)
 
 	err = BulkUpdateMessageLabels(
 		messageIds,
