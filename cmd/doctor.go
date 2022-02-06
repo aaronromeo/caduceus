@@ -112,7 +112,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 				fmt.Print("\t\tFound results\n")
 
 				operation := internal.UpdateMessagesMigration
-				note := "Archived message identified by the doctor"
+				note := fmt.Sprintf("Archived message identified by the doctor (filter %s)", archiveFilter.Id)
 				archiveMigration := internal.CadRawMigration{
 					Operation: &operation,
 					Details: internal.CadUpdateMessagesMigration{
@@ -218,7 +218,7 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 
 func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 	returnMigrations := []internal.CadRawMigration{}
-	criteriaAndSampleMessages, err := internal.GetMessageCriteriaForUnsubscribe(time.Now().Add(-time.Hour * 72).UTC())
+	criteriaAndSampleMessages, err := internal.GetMessageCriteriaForUnsubscribe(time.Now().Add(-time.Hour * 24 * 120).UTC())
 	if err != nil {
 		return nil, err
 	}
