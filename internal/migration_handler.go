@@ -237,7 +237,7 @@ func getMigrationFiles(daily bool) ([]string, error) {
 
 	migrationFiles := []string{}
 	for _, file := range files {
-		r, _ := regexp.Compile("^[0-9]+.json$")
+		r, _ := regexp.Compile("^[0-9]{8}-[0-9]{4}.json$")
 		if daily {
 			r, _ = regexp.Compile("^daily-[0-9]+.json$")
 		}
