@@ -158,7 +158,7 @@ func GetMessageIDsInInboxByFilterCriteria(filter *CadFilter) ([]string, error) {
 			case "Size":
 			default:
 				extraCriteria = true
-				q = fmt.Sprintf("%s %s=\"%s\"", q, strings.ToLower(criteriaValue.Type().Field(i).Name), criteriaValue.Field(i))
+				q = fmt.Sprintf("%s %s=%s", q, strings.ToLower(criteriaValue.Type().Field(i).Name), criteriaValue.Field(i))
 			}
 		}
 	}
