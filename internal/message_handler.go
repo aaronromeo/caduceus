@@ -7,7 +7,6 @@ import (
 	"log"
 	"reflect"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -64,34 +63,24 @@ func GetMessageCriteriaForUnsubscribe(until time.Time) ([]*CadCriteraAndSampleMe
 					if regUnsubscribe.MatchString(html) {
 						for _, header := range message.Payload.Headers {
 							headerNamesMap[strings.ToLower(header.Name)] = true
-
-							switch strings.ToLower(header.Name) {
-							case "from":
-								regFrom := regexp.MustCompile(`.*<([^>]*)>\z`)
-								var from string
-								parts := regFrom.FindStringSubmatch(header.Value)
-								if len(parts) == 0 {
-									from = header.Value
-								} else {
-									from = parts[1]
-								}
-								criteria.From = from
-							case "to":
-								criteria.To = header.Value
-							case "list-id":
-								regListId := regexp.MustCompile(`.*list <([^>]*)>\z`)
-								var listId string
-								parts := regListId.FindStringSubmatch(header.Value)
-								if len(parts) == 0 {
-									listId = header.Value
-								} else {
-									listId = parts[1]
-								}
-								criteria.Query = fmt.Sprintf("list:\\\"%s\\\"", listId)
-							}
+							extractCriteriaFromHeader(header, criteria)
 						}
 					} else {
-						fmt.Println(html)
+						// fmt.Println(html)
+						messageIdentifiers := ""
+						for _, header := range message.Payload.Headers {
+							switch strings.ToLower(header.Name) {
+							case "from":
+								from := extractSenderFromHeader(header)
+								messageIdentifiers = fmt.Sprintf("from: %s %s", from, messageIdentifiers)
+							case "to":
+								messageIdentifiers = fmt.Sprintf("to: %s %s", header.Value, messageIdentifiers)
+							case "list-id":
+								listId := extractListIdFromHeader(header)
+								messageIdentifiers = fmt.Sprintf("listId: %s %s", listId, messageIdentifiers)
+							}
+						}
+						fmt.Printf("\t-> Message with unsubscribe missed by regex %s\n", messageIdentifiers)
 					}
 				} else if part.MimeType == "text/plain" {
 					// fmt.Printf("Skipping plain text message\n")
@@ -117,11 +106,11 @@ func GetMessageCriteriaForUnsubscribe(until time.Time) ([]*CadCriteraAndSampleMe
 			}
 
 		}
-		headerNameKeys := []string{}
-		for headerName := range headerNamesMap {
-			headerNameKeys = append(headerNameKeys, headerName)
-		}
-		sort.Strings(headerNameKeys)
+		// headerNameKeys := []string{}
+		// for headerName := range headerNamesMap {
+		// 	headerNameKeys = append(headerNameKeys, headerName)
+		// }
+		// sort.Strings(headerNameKeys)
 		fmt.Printf("Found %d messages\n", len(r.Messages))
 		fmt.Printf("Filtered %d messages\n", len(messageSearchCriteria))
 
@@ -136,6 +125,43 @@ func GetMessageCriteriaForUnsubscribe(until time.Time) ([]*CadCriteraAndSampleMe
 		criteria = append(criteria, value)
 	}
 	return criteria, nil
+}
+
+func extractCriteriaFromHeader(header *gmail.MessagePartHeader, criteria *CadCriteria) {
+	switch strings.ToLower(header.Name) {
+	case "from":
+		from := extractSenderFromHeader(header)
+		criteria.From = from
+	case "to":
+		criteria.To = header.Value
+	case "list-id":
+		listId := extractListIdFromHeader(header)
+		criteria.Query = fmt.Sprintf("list:\\\"%s\\\"", listId)
+	}
+}
+
+func extractListIdFromHeader(header *gmail.MessagePartHeader) string {
+	regListId := regexp.MustCompile(`.*list <([^>]*)>\z`)
+	var listId string
+	parts := regListId.FindStringSubmatch(header.Value)
+	if len(parts) == 0 {
+		listId = header.Value
+	} else {
+		listId = parts[1]
+	}
+	return listId
+}
+
+func extractSenderFromHeader(header *gmail.MessagePartHeader) string {
+	regFrom := regexp.MustCompile(`.*<([^>]*)>\z`)
+	var from string
+	parts := regFrom.FindStringSubmatch(header.Value)
+	if len(parts) == 0 {
+		from = header.Value
+	} else {
+		from = parts[1]
+	}
+	return from
 }
 
 func GetMessageIDsInInboxByFilterCriteria(filter *CadFilter) ([]string, error) {

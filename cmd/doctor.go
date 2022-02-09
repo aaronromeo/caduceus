@@ -134,6 +134,11 @@ func runDoctor(cmd *cobra.Command, args []string) {
 }
 
 func interactiveSuggestions() {
+	duplicateFilterCadMigrations, err := duplicateFilterMigrations()
+	if err != nil {
+		panic(err)
+	}
+
 	emptyLabelCadMigrations, err := emptyLabelMigrations()
 	if err != nil {
 		panic(err)
@@ -146,6 +151,7 @@ func interactiveSuggestions() {
 
 	totalmigs := []internal.CadRawMigration{}
 	totalmigs = append(emptyLabelCadMigrations, unsubscribeCadMigrations...)
+	totalmigs = append(totalmigs, duplicateFilterCadMigrations...)
 	internal.CreateMigrationFile(&totalmigs)
 }
 
@@ -156,6 +162,50 @@ func emptyLabel(l internal.CadLabel) bool {
 		l.MessagesUnread == 0 &&
 		l.ThreadsTotal == 0 &&
 		l.ThreadsUnread == 0
+}
+
+func duplicateFilterMigrations() ([]internal.CadRawMigration, error) {
+	filters, err := internal.DuplicateFilters()
+	if err != nil {
+		fmt.Printf("Maintenance failed %v\n", err)
+		panic(err)
+	}
+
+	migrations := []internal.CadRawMigration{}
+	for _, duplicateFilter := range filters {
+		operation := internal.DeleteFilterMigration
+		note := fmt.Sprintf("Duplicate Filter identified by the doctor (filter %s %s)", internal.CriteriaKey(*duplicateFilter.Criteria), internal.ActionKey(*duplicateFilter.Action))
+		detailsId := duplicateFilter.Id
+		duplicateFilterMigration := internal.CadRawMigration{
+			Operation: &operation,
+			Details: internal.CadDeleteFilterMigration{
+				Id: &detailsId,
+			},
+			Note: &note,
+		}
+
+		prompt := promptui.Select{
+			Label: fmt.Sprintf("Delete duplicate filter %s %s", internal.CriteriaKey(*duplicateFilter.Criteria), internal.ActionKey(*duplicateFilter.Action)),
+			Items: []string{
+				yes,
+				no,
+				end,
+			},
+		}
+
+		_, result, err := prompt.Run()
+
+		if err != nil {
+			return nil, err
+		}
+
+		if result == yes {
+			migrations = append(migrations, duplicateFilterMigration)
+		} else if result == end {
+			return migrations, nil
+		}
+	}
+	return migrations, nil
 }
 
 func emptyLabelMigrations() ([]internal.CadRawMigration, error) {

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"sort"
+	"strings"
 	"time"
 
 	"google.golang.org/api/gmail/v1"
@@ -114,6 +115,27 @@ func SelectArchiveFilters() ([]CadFilter, error) {
 	return archiveFilters, nil
 }
 
+func DuplicateFilters() ([]CadFilter, error) {
+	filters, err := ReadLocalFilters()
+	if err != nil {
+		log.Printf("Unable to read local filters file: %v", err)
+		return nil, err
+	}
+
+	filterCriteriaMap := map[string]*CadFilter{}
+	duplicateFilters := []CadFilter{}
+	for _, filter := range filters {
+		key := fmt.Sprintf("%s|%s", CriteriaKey(*filter.Criteria), ActionKey(*filter.Action))
+
+		if filterCriteriaMap[key] != nil {
+			duplicateFilters = append(duplicateFilters, filter)
+		} else {
+			filterCriteriaMap[key] = &filter
+		}
+	}
+	return duplicateFilters, nil
+}
+
 func GetFilter(cadFilter *CadFilter) (*CadFilter, error) {
 	srv, err := GetService()
 	if err != nil {
@@ -139,18 +161,28 @@ func CreateFilter(cadFilter *CadFilter) (*CadFilter, error) {
 
 	user := "me"
 	gmailFilter := cadFilter.MarshalGmail()
-	retry := 3
+	retry := 4
 	for retry > 0 {
 		filter, err := srv.Users.Settings.Filters.Create(user, gmailFilter).Do()
 		if err != nil {
-			gErr, ok := err.(*googleapi.Error)
-
 			log.Printf("Unable to create filter: %v\n", err)
-			if ok && (gErr.Code == 503 || gErr.Code == 400) {
+
+			gErr, ok := err.(*googleapi.Error)
+			retryCondition := func(gErr *googleapi.Error) bool {
+				return (gErr.Code == 503 ||
+					gErr.Code == 500 ||
+					(gErr.Code == 400 && gErr.Message == "Precondition check failed."))
+			}
+
+			if ok && retryCondition(gErr) {
 				retry -= 1
 				log.Printf("Retrying after a nap...\n")
 				time.Sleep(60 * time.Second * time.Duration(10/retry))
+			} else if ok && (gErr.Code == 400) && (gErr.Message == "Filter already exists") {
+				log.Printf("Filter already exists, skipping...\n")
+				return nil, nil
 			} else {
+				fmt.Println(gErr.Message)
 				return nil, err
 			}
 		} else {
@@ -315,7 +347,7 @@ func consolidateFiltersByCriteria(filters []*CadFilter) ([]*CadConsolidatedFilte
 	filterIdMap := map[string]*CadConsolidatedFilter{}
 
 	for _, filter := range filters {
-		criteriaKey := criteriaKey(*filter.Criteria)
+		criteriaKey := CriteriaKey(*filter.Criteria)
 
 		if filterIdMap[criteriaKey] != nil {
 			consolidatedFilter := *filterIdMap[criteriaKey]
@@ -357,8 +389,8 @@ func consolidateFiltersByCriteria(filters []*CadFilter) ([]*CadConsolidatedFilte
 		consolidatedFilters = append(consolidatedFilters, ccf)
 	}
 	sort.SliceStable(consolidatedFilters, func(i, j int) bool {
-		fi := criteriaKey(*consolidatedFilters[i].Criteria)
-		fj := criteriaKey(*consolidatedFilters[j].Criteria)
+		fi := CriteriaKey(*consolidatedFilters[i].Criteria)
+		fj := CriteriaKey(*consolidatedFilters[j].Criteria)
 
 		return fi < fj
 	})
@@ -366,7 +398,7 @@ func consolidateFiltersByCriteria(filters []*CadFilter) ([]*CadConsolidatedFilte
 	return consolidatedFilters, nil
 }
 
-func criteriaKey(criteria CadCriteria) string {
+func CriteriaKey(criteria CadCriteria) string {
 	return fmt.Sprintf(
 		"%s|%s|%s|%s|%d|%s|%t|%t",
 		criteria.From,
@@ -377,5 +409,17 @@ func criteriaKey(criteria CadCriteria) string {
 		criteria.SizeComparison,
 		criteria.HasAttachment,
 		criteria.ExcludeChats,
+	)
+}
+
+func ActionKey(action CadAction) string {
+	sort.Strings(action.AddLabelIds)
+	sort.Strings(action.RemoveLabelIds)
+
+	return fmt.Sprintf(
+		"%s|%s|%s",
+		action.Forward,
+		strings.Join(action.AddLabelIds, ":"),
+		strings.Join(action.RemoveLabelIds, ":"),
 	)
 }

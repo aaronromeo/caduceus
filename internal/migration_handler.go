@@ -318,7 +318,12 @@ func updateMessages(migration CadUpdateMessagesMigration) error {
 }
 
 func createFilter(migration CadCreateFilterMigration) error {
-	fmt.Printf("%sCreating filter...%s %s %s\n", indent, migration.Criteria.From, migration.Criteria.To, migration.Criteria.Subject)
+	fmt.Printf("%sCreating filter...%s %s %s %s\n",
+		indent,
+		migration.Criteria.From,
+		migration.Criteria.To,
+		migration.Criteria.Subject,
+		migration.Criteria.Query)
 
 	labels, err := GetLabels()
 	if err != nil {
