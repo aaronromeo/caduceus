@@ -264,7 +264,7 @@ func CreateMigrationFile(migrations *[]CadRawMigration) error {
 	}
 
 	t := time.Now()
-	err = ioutil.WriteFile(fmt.Sprintf("migrations/%s.json", t.Format("20060201-0304")), data, 0644)
+	err = ioutil.WriteFile(fmt.Sprintf("migrations/%s.json", t.Format("20060102-0304")), data, 0644)
 	if err != nil {
 		log.Printf("Unable write migrations: %v", err)
 		return err
