@@ -33,6 +33,7 @@ const create_filter string = "Create Filter"
 const skip string = "Skip"
 const yes string = "Yes"
 const no string = "No"
+const end string = "End suggestions"
 const neverImportant string = "Never mark it as important"
 const alwaysImportant string = "Always mark it as important"
 
@@ -178,7 +179,7 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 		}
 	}
 
-	emptyLabelMigrations := []internal.CadRawMigration{}
+	emptyLabelRawMigrations := []internal.CadRawMigration{}
 	for _, label := range emptyLabels {
 		if len(nestedLabelLookup[label.Name]) == 1 {
 			operation := internal.DeleteLabelMigration
@@ -193,10 +194,11 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 			}
 
 			prompt := promptui.Select{
-				Label: fmt.Sprintf("Delete label %s", label.Name),
+				Label: fmt.Sprintf("Delete empty label %s", label.Name),
 				Items: []string{
 					yes,
 					no,
+					end,
 				},
 			}
 
@@ -207,13 +209,15 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 			}
 
 			if result == yes {
-				emptyLabelMigrations = append(emptyLabelMigrations, labelMigration)
+				emptyLabelRawMigrations = append(emptyLabelRawMigrations, labelMigration)
+			} else if result == end {
+				return emptyLabelRawMigrations, nil
 			}
 		} else {
 			fmt.Printf("Skipping parent label %s\n", label.Name)
 		}
 	}
-	return emptyLabelMigrations, nil
+	return emptyLabelRawMigrations, nil
 }
 
 func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
@@ -264,6 +268,7 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 			Items: []string{
 				create_filter,
 				skip,
+				end,
 			},
 		}
 
@@ -379,6 +384,8 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 			}
 
 			unsubscribeMigrations = append(unsubscribeMigrations, labelMigration)
+		} else if result == end {
+			return unsubscribeMigrations, nil
 		}
 	}
 
