@@ -25,6 +25,7 @@ const CreateFilterMigration string = "create-filter"
 
 type CadUpdateMessagesMigration struct {
 	QueryLabelIds  *[]string `json:"queryLabelIds"`
+	MessageIds     *[]string `json:"messageIds"`
 	QueryString    *string   `json:"query"`
 	RemoveLabelIds *[]string `json:"removeLabelIds"`
 	AddLabelIds    *[]string `json:"addLabelIds"`
@@ -95,6 +96,7 @@ func RunMigrations(daily bool) error {
 	for _, migrationFile := range migrationFiles {
 		var migrations []CadRawMigration
 
+		fmt.Printf("Processing migration %s\n", migrationFile)
 		b, err := ioutil.ReadFile(migrationFile)
 		if err != nil {
 			log.Printf("Unable to read the migration file: %v", err)
@@ -235,9 +237,9 @@ func getMigrationFiles(daily bool) ([]string, error) {
 
 	migrationFiles := []string{}
 	for _, file := range files {
-		r, _ := regexp.Compile("[0-9]+.json$")
+		r, _ := regexp.Compile("^[0-9]{8}-[0-9]{4}.json$")
 		if daily {
-			r, _ = regexp.Compile("daily-[0-9]+.json$")
+			r, _ = regexp.Compile("^daily-[0-9]+.json$")
 		}
 		if r.MatchString(file.Name()) {
 			migrationFiles = append(migrationFiles, strings.Join([]string{migrationsPath, file.Name()}, "/"))
@@ -262,7 +264,7 @@ func CreateMigrationFile(migrations *[]CadRawMigration) error {
 	}
 
 	t := time.Now()
-	err = ioutil.WriteFile(fmt.Sprintf("migrations/%s.json", t.Format("20060201-0304")), data, 0644)
+	err = ioutil.WriteFile(fmt.Sprintf("migrations/%s.json", t.Format("20060102-0304")), data, 0644)
 	if err != nil {
 		log.Printf("Unable write migrations: %v", err)
 		return err
@@ -273,6 +275,9 @@ func CreateMigrationFile(migrations *[]CadRawMigration) error {
 
 func updateMessages(migration CadUpdateMessagesMigration) error {
 	printMessages := []string{}
+	if migration.MessageIds != nil {
+		printMessages = append(printMessages, *migration.MessageIds...)
+	}
 	if migration.QueryLabelIds != nil {
 		printMessages = append(printMessages, *migration.QueryLabelIds...)
 	}
@@ -282,14 +287,22 @@ func updateMessages(migration CadUpdateMessagesMigration) error {
 	fmt.Println("Migrating messages...", printMessages)
 
 	labels := []*CadLabel{}
-	for _, labelId := range *migration.QueryLabelIds {
-		labels = append(labels, &CadLabel{Id: labelId})
+	if migration.QueryLabelIds != nil {
+		for _, labelId := range *migration.QueryLabelIds {
+			labels = append(labels, &CadLabel{Id: labelId})
+		}
 	}
-	messageIds, err := GetMessagesIDsByLabelIDs(labels, migration.QueryString)
-	if err != nil {
-		log.Printf("Unable to retrieve message Ids: %v", err)
-		return err
+	messageIds := []string{}
+	var err error
+	if len(labels) > 0 {
+		messageIds, err = GetMessagesIDsByLabelIDs(labels, migration.QueryString)
+		if err != nil {
+			log.Printf("Unable to retrieve message Ids: %v", err)
+			return err
+		}
+
 	}
+	messageIds = append(messageIds, *migration.MessageIds...)
 
 	err = BulkUpdateMessageLabels(
 		messageIds,
@@ -305,7 +318,12 @@ func updateMessages(migration CadUpdateMessagesMigration) error {
 }
 
 func createFilter(migration CadCreateFilterMigration) error {
-	fmt.Printf("%sCreating filter...%s %s %s\n", indent, migration.Criteria.From, migration.Criteria.To, migration.Criteria.Subject)
+	fmt.Printf("%sCreating filter...%s %s %s %s\n",
+		indent,
+		migration.Criteria.From,
+		migration.Criteria.To,
+		migration.Criteria.Subject,
+		migration.Criteria.Query)
 
 	labels, err := GetLabels()
 	if err != nil {

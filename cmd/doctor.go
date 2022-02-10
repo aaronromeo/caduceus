@@ -33,43 +33,112 @@ const create_filter string = "Create Filter"
 const skip string = "Skip"
 const yes string = "Yes"
 const no string = "No"
+const end string = "End suggestions"
 const neverImportant string = "Never mark it as important"
 const alwaysImportant string = "Always mark it as important"
 
+var FlagSuggestions bool
+var FlagDirect bool
+var FlagFilterMaintenance bool
+var FlagFetch bool
+
 func runDoctor(cmd *cobra.Command, args []string) {
-	updateLabelsPrompt := promptui.Select{
-		Label: "Update labels?",
-		Items: []string{yes, no},
-	}
+	updateLabelsResult := yes
+	updateFiltersResult := yes
 
-	_, updateLabelsResult, err := updateLabelsPrompt.Run()
+	if !FlagDirect {
+		var err error
 
-	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		panic(err)
+		updateLabelsPrompt := promptui.Select{
+			Label: "Update labels?",
+			Items: []string{yes, no},
+		}
+
+		_, updateLabelsResult, err = updateLabelsPrompt.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			panic(err)
+		}
+
+		updateFiltersPrompt := promptui.Select{
+			Label: "Update filters?",
+			Items: []string{yes, no},
+		}
+
+		_, updateFiltersResult, err = updateFiltersPrompt.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			panic(err)
+		}
+	} else if FlagFetch {
+		updateLabelsResult = yes
+		updateFiltersResult = yes
+	} else {
+		updateLabelsResult = no
+		updateFiltersResult = no
 	}
 
 	if updateLabelsResult == yes {
 		FetchLabels()
 	}
 
-	updateFiltersPrompt := promptui.Select{
-		Label: "Update filters?",
-		Items: []string{yes, no},
-	}
-
-	_, updateFiltersResult, err := updateFiltersPrompt.Run()
-
-	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		panic(err)
-	}
-
 	if updateFiltersResult == yes {
 		FetchFilters()
 	}
 
-	fmt.Println("Analyzing results...")
+	if FlagSuggestions || FlagFilterMaintenance {
+		fmt.Println("Analyzing results...")
+	}
+
+	if FlagSuggestions && !FlagDirect {
+		interactiveSuggestions()
+	}
+
+	if FlagFilterMaintenance {
+		totalmigs := []internal.CadRawMigration{}
+
+		filters, err := internal.SelectArchiveFilters()
+		if err != nil {
+			fmt.Printf("Maintenance failed %v\n", err)
+			panic(err)
+		}
+
+		for _, archiveFilter := range filters {
+			fmt.Printf("\tSearching for filter ID %s", archiveFilter.Id)
+			ids, _ := internal.GetMessageIDsInInboxByFilterCriteria(&archiveFilter)
+
+			if len(ids) != 0 {
+				fmt.Print("\t\tFound results\n")
+
+				operation := internal.UpdateMessagesMigration
+				note := fmt.Sprintf("Archived message identified by the doctor (filter %s)", archiveFilter.Id)
+				archiveMigration := internal.CadRawMigration{
+					Operation: &operation,
+					Details: internal.CadUpdateMessagesMigration{
+						MessageIds:     &ids,
+						RemoveLabelIds: &archiveFilter.Action.RemoveLabelIds,
+						AddLabelIds:    &archiveFilter.Action.AddLabelIds,
+					},
+					Note: &note,
+				}
+
+				totalmigs = append(totalmigs, archiveMigration)
+			}
+		}
+		if len(totalmigs) > 0 {
+			internal.CreateMigrationFile(&totalmigs)
+		}
+	}
+}
+
+func interactiveSuggestions() {
+	duplicateFilterCadMigrations, err := duplicateFilterMigrations()
+	if err != nil {
+		panic(err)
+	}
+
 	emptyLabelCadMigrations, err := emptyLabelMigrations()
 	if err != nil {
 		panic(err)
@@ -82,6 +151,7 @@ func runDoctor(cmd *cobra.Command, args []string) {
 
 	totalmigs := []internal.CadRawMigration{}
 	totalmigs = append(emptyLabelCadMigrations, unsubscribeCadMigrations...)
+	totalmigs = append(totalmigs, duplicateFilterCadMigrations...)
 	internal.CreateMigrationFile(&totalmigs)
 }
 
@@ -92,6 +162,50 @@ func emptyLabel(l internal.CadLabel) bool {
 		l.MessagesUnread == 0 &&
 		l.ThreadsTotal == 0 &&
 		l.ThreadsUnread == 0
+}
+
+func duplicateFilterMigrations() ([]internal.CadRawMigration, error) {
+	filters, err := internal.DuplicateFilters()
+	if err != nil {
+		fmt.Printf("Maintenance failed %v\n", err)
+		panic(err)
+	}
+
+	migrations := []internal.CadRawMigration{}
+	for _, duplicateFilter := range filters {
+		operation := internal.DeleteFilterMigration
+		note := fmt.Sprintf("Duplicate Filter identified by the doctor (filter %s %s)", internal.CriteriaKey(*duplicateFilter.Criteria), internal.ActionKey(*duplicateFilter.Action))
+		detailsId := duplicateFilter.Id
+		duplicateFilterMigration := internal.CadRawMigration{
+			Operation: &operation,
+			Details: internal.CadDeleteFilterMigration{
+				Id: &detailsId,
+			},
+			Note: &note,
+		}
+
+		prompt := promptui.Select{
+			Label: fmt.Sprintf("Delete duplicate filter %s %s", internal.CriteriaKey(*duplicateFilter.Criteria), internal.ActionKey(*duplicateFilter.Action)),
+			Items: []string{
+				yes,
+				no,
+				end,
+			},
+		}
+
+		_, result, err := prompt.Run()
+
+		if err != nil {
+			return nil, err
+		}
+
+		if result == yes {
+			migrations = append(migrations, duplicateFilterMigration)
+		} else if result == end {
+			return migrations, nil
+		}
+	}
+	return migrations, nil
 }
 
 func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
@@ -115,7 +229,7 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 		}
 	}
 
-	emptyLabelMigrations := []internal.CadRawMigration{}
+	emptyLabelRawMigrations := []internal.CadRawMigration{}
 	for _, label := range emptyLabels {
 		if len(nestedLabelLookup[label.Name]) == 1 {
 			operation := internal.DeleteLabelMigration
@@ -130,10 +244,11 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 			}
 
 			prompt := promptui.Select{
-				Label: fmt.Sprintf("Delete label %s", label.Name),
+				Label: fmt.Sprintf("Delete empty label %s", label.Name),
 				Items: []string{
 					yes,
 					no,
+					end,
 				},
 			}
 
@@ -144,18 +259,20 @@ func emptyLabelMigrations() ([]internal.CadRawMigration, error) {
 			}
 
 			if result == yes {
-				emptyLabelMigrations = append(emptyLabelMigrations, labelMigration)
+				emptyLabelRawMigrations = append(emptyLabelRawMigrations, labelMigration)
+			} else if result == end {
+				return emptyLabelRawMigrations, nil
 			}
 		} else {
 			fmt.Printf("Skipping parent label %s\n", label.Name)
 		}
 	}
-	return emptyLabelMigrations, nil
+	return emptyLabelRawMigrations, nil
 }
 
 func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 	returnMigrations := []internal.CadRawMigration{}
-	criteriaAndSampleMessages, err := internal.GetMessageCriteriaForUnsubscribe(time.Now().Add(-time.Hour * 72).UTC())
+	criteriaAndSampleMessages, err := internal.GetMessageCriteriaForUnsubscribe(time.Now().Add(-time.Hour * 24 * 120).UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +318,7 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 			Items: []string{
 				create_filter,
 				skip,
+				end,
 			},
 		}
 
@@ -316,6 +434,8 @@ func unsubscribeMigrations() ([]internal.CadRawMigration, error) {
 			}
 
 			unsubscribeMigrations = append(unsubscribeMigrations, labelMigration)
+		} else if result == end {
+			return unsubscribeMigrations, nil
 		}
 	}
 
@@ -334,4 +454,8 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// doctorCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	doctorCmd.Flags().BoolVarP(&FlagDirect, "direct", "d", false, "The opposite of interactive mode")
+	doctorCmd.Flags().BoolVarP(&FlagFetch, "fetch", "f", true, "Fetch the labels and filters (only used in direct mode)")
+	doctorCmd.Flags().BoolVarP(&FlagSuggestions, "suggestions", "s", true, "Generate filter and label suggestions if in interactive mode")
+	doctorCmd.Flags().BoolVarP(&FlagFilterMaintenance, "maintenance", "m", false, "Generate message cleanup based on existing filters")
 }
